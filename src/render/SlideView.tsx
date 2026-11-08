@@ -49,7 +49,7 @@ const CSS = `
 .hs-body code{font-family:${MONO}}
 .hs-body pre{white-space:pre;tab-size:4;margin:0;text-align:left}
 .hs-body pre code{display:block}
-.hs-body table{border-collapse:collapse;width:auto;margin-bottom:.22em}
+.hs-body table{border-collapse:collapse;width:auto;margin-bottom:.22em;overflow-wrap:normal}
 .hs-body.center table{margin-inline:auto}
 .hs-body th,.hs-body td{padding:.25em;vertical-align:top;border-bottom:.03em solid color-mix(in srgb,var(--foreground) 20%,transparent);text-align:left}
 .hs-body th{font-weight:700;color:var(--accent);border-bottom:.06em solid var(--accent)}
