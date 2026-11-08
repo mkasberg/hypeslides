@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { EditorState } from '@codemirror/state'
-import { EditorView, drawSelection, highlightActiveLine, keymap, lineNumbers, placeholder } from '@codemirror/view'
+import { Decoration, EditorView, ViewPlugin, drawSelection, highlightActiveLine, keymap, lineNumbers, placeholder } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
@@ -8,6 +8,26 @@ import { tags as t } from '@lezer/highlight'
 import { editorBridge } from '../app/editorBridge'
 import { formatText } from '../app/markdownFormat'
 import type { FormatKind } from '../app/markdownFormat'
+import type { DecorationSet, ViewUpdate } from '@codemirror/view'
+
+/** Front matter (`---` ... `---` at the top) would otherwise read as a setext heading. */
+const frontMatter = ViewPlugin.fromClass(class {
+  decorations: DecorationSet
+  constructor(view: EditorView) { this.decorations = this.build(view) }
+  update(u: ViewUpdate) { if (u.docChanged) this.decorations = this.build(u.view) }
+  build(view: EditorView): DecorationSet {
+    const doc = view.state.doc
+    if (doc.lines < 2 || doc.line(1).text.trimEnd() !== '---') return Decoration.none
+    for (let i = 2; i <= doc.lines; i++) {
+      if (doc.line(i).text.trimEnd() === '---') {
+        const marks = []
+        for (let n = 1; n <= i; n++) marks.push(Decoration.line({ class: 'cm-frontmatter' }).range(doc.line(n).from))
+        return Decoration.set(marks)
+      }
+    }
+    return Decoration.none
+  }
+}, { decorations: (v) => v.decorations })
 
 const highlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--accent)', fontWeight: '700' },
@@ -34,6 +54,7 @@ const theme = EditorView.theme({
   '.cm-activeLine': { backgroundColor: 'var(--active-line)' },
   '.cm-gutters': { backgroundColor: 'var(--editor-bg)', color: 'var(--muted)', border: 'none' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--fg)' },
+  '.cm-frontmatter, .cm-frontmatter *': { color: 'var(--muted) !important', fontWeight: '400 !important', fontStyle: 'normal !important' },
   '.cm-placeholder': { color: 'var(--muted)' },
 })
 
@@ -80,7 +101,7 @@ export function CodeEditor(props: CodeEditorProps) {
         }
         if (u.selectionSet || u.docChanged) p.onCursor?.(u.state.selection.main.head)
       }),
-      ...(props.lineNumbers ? [lineNumbers()] : []),
+      ...(props.lineNumbers ? [lineNumbers(), frontMatter] : []),
       ...(props.placeholder ? [placeholder(props.placeholder)] : []),
     ]
     const view = new EditorView({

@@ -30,8 +30,9 @@ interface ItemProps {
   onMenu(index: number, e: ReactMouseEvent): void
 }
 
-function Thumb({ source, palette, font, resolveMedia }: Pick<ItemProps, 'source' | 'palette' | 'font' | 'resolveMedia'>) {
-  const [ref, seen] = useSeen<HTMLDivElement>()
+function Thumb({ source, palette, font, resolveMedia, eager }: Pick<ItemProps, 'source' | 'palette' | 'font' | 'resolveMedia'> & { eager?: boolean }) {
+  const [ref, seenNear] = useSeen<HTMLDivElement>()
+  const seen = eager || seenNear
   return (
     <div className="thumb" ref={ref}>
       {seen && <SlideView source={source} palette={palette} font={font} resolveMedia={resolveMedia} mode="thumbnail" />}
@@ -143,7 +144,7 @@ export function SlideList({ variant }: { variant: 'sidebar' | 'overview' }) {
     const { first: f, last: l } = selRef.current
     if (o >= f && o <= l) return null
     const ev = e.activatorEvent as PointerEvent
-    const rect = over.rect
+    const rect = document.getElementById(`slide-item-${o}`)?.getBoundingClientRect() ?? over.rect
     const pointer = variant === 'overview' ? ev.clientX + e.delta.x : ev.clientY + e.delta.y
     const mid = variant === 'overview' ? rect.left + rect.width / 2 : rect.top + rect.height / 2
     const s = pointer < mid ? o : o + 1
@@ -219,7 +220,7 @@ export function SlideList({ variant }: { variant: 'sidebar' | 'overview' }) {
       <DragOverlay dropAnimation={null}>
         {activeIndex !== null && (
           <div className="drag-ghost">
-            <Thumb source={activeSource} palette={palette} font={font} resolveMedia={resolveMedia} />
+            <Thumb eager source={activeSource} palette={palette} font={font} resolveMedia={resolveMedia} />
             {count > 1 && <span className="drag-count">{count}</span>}
           </div>
         )}
