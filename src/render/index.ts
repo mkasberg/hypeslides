@@ -1,0 +1,5 @@
+export { SlideView } from './SlideView'
+export { renderSlideHtml } from './markdown'
+export type { CodeHighlighter, RenderOptions } from './markdown'
+export { highlightCode, loadLanguage } from './highlight'
+export * from './types'
