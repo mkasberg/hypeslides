@@ -46,4 +46,6 @@ export interface PresentationStore {
 export interface StorageCapabilities {
   /** showDirectoryPicker available: real folders on disk. */
   fsAccess: boolean
+  /** navigator.storage.getDirectory available (OPFS working copy). */
+  opfs: boolean
 }
