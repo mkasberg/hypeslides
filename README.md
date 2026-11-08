@@ -1,32 +1,56 @@
-# React + TypeScript + Vite
+# Hype Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A browser port of [Hype](https://github.com/omacom/hype): simple presentations
+written in Markdown, with a visual editor to put everything in order. It runs
+entirely in the browser and works from any static server.
 
-Currently, two official plugins are available:
+A presentation is a folder holding a Markdown file, with its media beside it:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```text
+my-talk/
+  presentation.md
+  images/
+  videos/
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The format is the same as Hype's, so a deck moves freely between the two. See
+Hype's [format reference](https://github.com/omacom/hype/blob/main/src/format.md).
+
+## Opening and saving
+
+- **Chrome, Edge, and other Chromium browsers** edit a folder on disk directly
+  (File System Access API). Open a folder with Ctrl+O; saves and autosaves go
+  straight to disk, and edits made to the file by other tools appear in the
+  editor. The last presentation reopens on the next visit (after a one-click
+  permission grant).
+- **Firefox and Safari** keep a working copy in browser storage (Origin Private
+  File System). Import a folder, a `.md`, or a `.zip` from the file menu or by
+  dropping it on the window; edits persist across reloads. Export downloads the
+  `.md`, or a `.zip` when the deck uses local media.
+
+## Editing
+
+Visual, Markdown, and Overview modes, slide reordering by drag or keyboard,
+formatting shortcuts, media layout options, themes, and fullscreen present mode
+all follow Hype. Press `?` in the app for the shortcuts.
+
+Not yet ported: PDF and PowerPoint export, presenter view, version history,
+and image compression on paste.
+
+## Develop
+
+```sh
+npm install
+npm run dev        # http://localhost:5173
+npm test           # Vitest
+npm run build      # static site in dist/
+```
+
+`/render-demo.html` on the dev server shows every slide of a sample deck in
+each theme, for checking the renderer.
+
+Code layout is described in [CLAUDE.md](CLAUDE.md).
+
+## License
+
+MIT. Ported from Hype, © its authors, MIT.
