@@ -53,4 +53,4 @@ Code layout is described in [CLAUDE.md](CLAUDE.md).
 
 ## License
 
-MIT. Ported from Hype, © its authors, MIT.
+MIT. Ported from Hype, Copyright (c) 2026 David Heinemeier Hansson; see [LICENSE](LICENSE).
