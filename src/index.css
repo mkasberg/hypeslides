@@ -1,0 +1,4 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { font: 14px/1.4 system-ui, sans-serif; background: #16161e; color: #c0caf5; }
