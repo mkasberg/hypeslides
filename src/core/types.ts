@@ -13,6 +13,12 @@ export interface Slide {
   start: number
   /** Offset just past the slide's last character in the full document source. */
   end: number
+  /**
+   * The separator line that follows this slide exactly as written (`---\n`,
+   * `---\r\n`, or `---` at EOF). Absent on the last slide. Lets a parsed deck be
+   * re-serialized losslessly.
+   */
+  separator?: string
 }
 
 export interface ParsedDeck {
@@ -33,6 +39,13 @@ export interface DocState {
   source: string
   selected: number
   anchor: number
+  /**
+   * Optional cached slide structure for `source`, valid only while
+   * `structure.source === source`. Commands set it so that editing an
+   * unfinished code fence never swallows the following slides (Hype reparses
+   * only the edited slide). Safe to drop: commands fall back to parseDeck.
+   */
+  structure?: { source: string; parsed: ParsedDeck }
 }
 
 export type MediaPosition =
@@ -49,8 +62,13 @@ export interface SlideMedia {
   video: boolean
   /** Inline SVG markup from an ```svg block, if any. */
   svg?: string
+  /** Explicit directive: 'fit' / 'span', or 'auto' when neither is written. */
   mode: 'auto' | 'fit' | 'span'
-  /** 'theme' | 'auto' | 'blur' | '#rrggbb' | undefined (default). */
+  /** Effective span (an image with a `# ` heading spans by default). */
+  span: boolean
+  /** First problem found in the media directives, if any. */
+  error?: string
+  /** 'theme' | 'white' | 'black' | 'auto' | 'blur' | '#rrggbb' | undefined (default). */
   background?: string
   overlay?: number
   loop: boolean
@@ -79,6 +97,8 @@ export interface Palette {
 export interface Theme {
   name: string // e.g. 'tokyo-night'
   colors: Palette
+  /** True for light themes (`mode = "light"`). */
+  light?: boolean
 }
 
 /** A problem found by `check` (later; also used for live warnings). */
