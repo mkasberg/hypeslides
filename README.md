@@ -53,6 +53,22 @@ npm test           # Vitest
 npm run build      # static site in dist/
 ```
 
+### End-to-end tests
+
+Playwright (Chromium) functional tests plus a screenshot regression suite live
+in `e2e/`. Screenshot baselines are only valid when rendered inside the
+official Playwright Docker image, so the default scripts run there (Docker
+required; the first run installs dependencies into `.docker-node_modules/`).
+
+```sh
+npm run test:e2e          # run the suite in Docker
+npm run test:e2e:update   # same, regenerating screenshot baselines
+npm run test:e2e:local    # run on the host (needs `npx playwright install chromium`;
+                          # screenshots will differ, use for debugging functional tests)
+```
+
+Pass extra Playwright flags after `--`, e.g. `npm run test:e2e -- -g overview`.
+
 `/render-demo.html` on the dev server shows every slide of a sample deck in
 each theme, for checking the renderer.
 
