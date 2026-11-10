@@ -35,7 +35,8 @@ formatting shortcuts, media layout options, themes, and fullscreen present mode
 all follow Hype. Press `?` in the app for the shortcuts.
 
 Not yet ported: PDF and PowerPoint export, presenter view, version history,
-and image compression on paste.
+and image compression on paste. See [TODO.md](TODO.md) for the full roadmap,
+including testing, CI, and agent support.
 
 ## Develop
 
