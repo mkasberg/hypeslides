@@ -1,15 +1,6 @@
 ---
 title: "Media"
 theme: tokyo-night
-color_background: "#1a1b26"
-color_foreground: "#a9b1d6"
-color_accent: "#7aa2f7"
-color_green: "#9ece6a"
-color_red: "#f7768e"
-color_yellow: "#e0af68"
-color_magenta: "#ad8ee6"
-color_cyan: "#449dab"
-color_dark_foreground: "#565f89"
 ---
 
 ![](landscape.jpg)

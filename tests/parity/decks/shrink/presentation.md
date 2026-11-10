@@ -1,15 +1,6 @@
 ---
 title: "Shrink"
 theme: nord
-color_background: "#2e3440"
-color_foreground: "#d8dee9"
-color_accent: "#81a1c1"
-color_green: "#a3be8c"
-color_red: "#bf616a"
-color_yellow: "#ebcb8b"
-color_magenta: "#b48ead"
-color_cyan: "#88c0d0"
-color_dark_foreground: "#667080"
 ---
 
 # Long list

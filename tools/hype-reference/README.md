@@ -8,6 +8,11 @@ JetBrains Mono installed.
 Pinned commit: `278d9805769c61286bd8246dd9b71da475c01ec9` (also stored in
 `/hype-commit` inside the image).
 
+Omarchy themes (https://github.com/basecamp/omarchy) are installed at
+`/opt/omarchy/themes` (`OMARCHY_PATH=/opt/omarchy`), pinned to
+`df3d01ce8240ebd6795621987dbb602420980dd0` (build arg `OMARCHY_COMMIT`, also in
+`/omarchy-commit`), so `theme: <name>` works in decks.
+
 ## Build
 
     docker build -t hypeslides/hype-reference tools/hype-reference

@@ -1,15 +1,6 @@
 ---
 title: "Themes light"
 theme: catppuccin-latte
-color_background: "#eff1f5"
-color_foreground: "#4c4f69"
-color_accent: "#1e66f5"
-color_green: "#40a02b"
-color_red: "#d20f39"
-color_yellow: "#df8e1d"
-color_magenta: "#ea76cb"
-color_cyan: "#179299"
-color_dark_foreground: "#9ca0b0"
 font: "JetBrains Mono"
 ---
 

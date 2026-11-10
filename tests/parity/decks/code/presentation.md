@@ -1,15 +1,6 @@
 ---
 title: "Code"
 theme: catppuccin
-color_background: "#1e1e2e"
-color_foreground: "#cdd6f4"
-color_accent: "#89b4fa"
-color_green: "#a6e3a1"
-color_red: "#f38ba8"
-color_yellow: "#f9e2af"
-color_magenta: "#f5c2e7"
-color_cyan: "#94e2d5"
-color_dark_foreground: "#6c7086"
 font: "JetBrains Mono"
 ---
 
