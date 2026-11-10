@@ -1,0 +1,13 @@
+{
+    "slides": [
+        {
+            "image": "slide-001.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-002.png",
+            "warning": ""
+        }
+    ],
+    "title": "Color overrides"
+}

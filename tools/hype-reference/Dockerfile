@@ -17,7 +17,16 @@ RUN git clone https://github.com/omacom/hype.git /src/hype \
     && echo "$HYPE_COMMIT" > /hype-commit \
     && cd / && rm -rf /src/hype
 
-ENV QT_QPA_PLATFORM=offscreen \
+# Omarchy themes, so `theme: <name>` resolves as it does for real Hype users.
+ARG OMARCHY_COMMIT=df3d01ce8240ebd6795621987dbb602420980dd0
+RUN git clone https://github.com/basecamp/omarchy.git /tmp/omarchy \
+    && cd /tmp/omarchy && git checkout "$OMARCHY_COMMIT" \
+    && mkdir -p /opt/omarchy && cp -R themes /opt/omarchy/themes \
+    && echo "$OMARCHY_COMMIT" > /omarchy-commit \
+    && rm -rf /tmp/omarchy
+
+ENV OMARCHY_PATH=/opt/omarchy \
+    QT_QPA_PLATFORM=offscreen \
     QT_QPA_PLATFORMTHEME=generic \
     QT_STYLE_OVERRIDE=Fusion \
     HOME=/tmp

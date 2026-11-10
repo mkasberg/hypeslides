@@ -1,15 +1,6 @@
 ---
 title: "SVG"
 theme: rose-pine
-color_background: "#faf4ed"
-color_foreground: "#575279"
-color_accent: "#56949f"
-color_green: "#286983"
-color_red: "#b4637a"
-color_yellow: "#ea9d34"
-color_magenta: "#907aa9"
-color_cyan: "#d7827e"
-color_dark_foreground: "#9893a5"
 font: "JetBrains Mono"
 ---
 

@@ -13,6 +13,8 @@ docker build -q -t "$IMAGE" "$ROOT/tools/hype-reference" >/dev/null
 BASE=$(sed -n 's/^FROM[[:space:]]\{1,\}\([^[:space:]]\{1,\}\).*/\1/p' "$ROOT/tools/hype-reference/Dockerfile" | head -n1)
 COMMIT=$(docker run --rm --entrypoint cat "$IMAGE" /hype-commit | tr -d '[:space:]')
 
+OMARCHY=$(docker run --rm --entrypoint cat "$IMAGE" /omarchy-commit | tr -d '[:space:]')
+
 rm -rf "$REF"
 mkdir -p "$REF"
 
@@ -42,7 +44,7 @@ for dir in "$DECKS"/*/; do
   decks_json="$decks_json${decks_json:+, }\"$name\": $count"
 done
 
-printf '{\n  "hypeCommit": "%s",\n  "image": "%s",\n  "generated": "%s",\n  "decks": { %s }\n}\n' \
-  "$COMMIT" "$BASE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$decks_json" > "$REF/manifest.json"
+printf '{\n  "hypeCommit": "%s",\n  "omarchyCommit": "%s",\n  "image": "%s",\n  "generated": "%s",\n  "decks": { %s }\n}\n' \
+  "$COMMIT" "$OMARCHY" "$BASE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$decks_json" > "$REF/manifest.json"
 
 echo "done: $REF/manifest.json ($warnings deck(s) with warnings)"
