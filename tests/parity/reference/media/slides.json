@@ -1,0 +1,120 @@
+{
+    "slides": [
+        {
+            "image": "slide-001.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-002.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-003.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-004.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-005.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-006.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-007.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-008.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-009.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-010.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-011.png",
+            "warning": ""
+        },
+        {
+            "autoplay": true,
+            "image": "slide-012.png",
+            "loop": false,
+            "muted": false,
+            "poster": "/in/media/images/.hype-poster-a609dfedf57425d4.jpg",
+            "span": false,
+            "title": false,
+            "video": "/in/media/videos/demo.mp4",
+            "warning": ""
+        },
+        {
+            "autoplay": true,
+            "image": "slide-013.png",
+            "loop": true,
+            "muted": true,
+            "poster": "/in/media/images/.hype-poster-a609dfedf57425d4.jpg",
+            "span": false,
+            "title": false,
+            "video": "/in/media/videos/demo.mp4",
+            "warning": ""
+        },
+        {
+            "autoplay": false,
+            "image": "slide-014.png",
+            "loop": false,
+            "muted": false,
+            "poster": "/in/media/images/.hype-poster-a609dfedf57425d4.jpg",
+            "span": false,
+            "title": false,
+            "video": "/in/media/videos/demo.mp4",
+            "warning": ""
+        },
+        {
+            "autoplay": true,
+            "image": "slide-015.png",
+            "loop": false,
+            "muted": false,
+            "poster": "/in/media/images/still.jpg",
+            "span": false,
+            "title": false,
+            "video": "/in/media/videos/demo.mp4",
+            "warning": ""
+        },
+        {
+            "autoplay": true,
+            "image": "slide-016.png",
+            "loop": false,
+            "muted": false,
+            "poster": "/in/media/images/.hype-poster-a609dfedf57425d4.jpg",
+            "span": false,
+            "title": true,
+            "video": "/in/media/videos/demo.mp4",
+            "warning": ""
+        },
+        {
+            "autoplay": true,
+            "image": "slide-017.png",
+            "loop": false,
+            "muted": false,
+            "overlay_image": "overlay-17.png",
+            "poster": "/in/media/images/.hype-poster-a609dfedf57425d4.jpg",
+            "span": true,
+            "title": false,
+            "video": "/in/media/videos/demo.mp4",
+            "warning": ""
+        },
+        {
+            "image": "slide-018.png",
+            "warning": ""
+        }
+    ],
+    "title": "Media"
+}

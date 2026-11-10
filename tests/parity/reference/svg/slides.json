@@ -1,0 +1,25 @@
+{
+    "slides": [
+        {
+            "image": "slide-001.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-002.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-003.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-004.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-005.png",
+            "warning": ""
+        }
+    ],
+    "title": "SVG"
+}
