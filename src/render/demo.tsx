@@ -1,5 +1,5 @@
-// Temporary dev harness: npx vite, then open /render-demo.html
-import '../fonts.css'
+// All-themes demo: every slide of a sample deck in each theme. Shown by the
+// harness page (/harness.html?demo) for eyeballing the renderer.
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { THEMES, paletteFor, parseDeck, scalar } from '../core'
@@ -111,8 +111,10 @@ function Demo() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Demo />
-  </StrictMode>,
-)
+export function mountDemo(container: HTMLElement) {
+  createRoot(container).render(
+    <StrictMode>
+      <Demo />
+    </StrictMode>,
+  )
+}
