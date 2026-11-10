@@ -9,7 +9,10 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test:e2e": "tools/playwright-docker.sh",
+    "test:e2e:update": "tools/playwright-docker.sh --update-snapshots",
+    "test:e2e:local": "playwright test"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -33,6 +36,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
