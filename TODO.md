@@ -6,18 +6,19 @@ suites are what catch regressions.
 
 ## 1. Verify what's built
 
-- [ ] Hands-on pass in real browsers. Not yet exercised outside headless tests
-      or fakes:
+- [x] Hands-on pass in real browsers (done 2026-11-09). Exercised:
   - Chrome's real folder picker: Open, Save, Save As, reopening the last
     presentation, live reload of external edits.
   - Media paste/drop and the Layout menu with real photos.
-  - Video playback in present mode.
+  - Video playback in present mode. Found that Chrome on Linux can't decode
+    HEVC (common for phone videos); the slide now says so instead of
+    showing black.
   - Real Firefox and Safari (OPFS working copy, import/export, the Safari
     worker fallback for `createWritable`).
 
 ## 2. Testing and CI
 
-- [ ] **CI basics** (`.github/workflows/ci.yml`, on push and PR): `npm ci`,
+- [x] **CI basics** (`.github/workflows/ci.yml`, on push and PR): `npm ci`,
       lint (oxlint), typecheck, Vitest, build.
 - [ ] **Bundle fonts.** Ship JetBrains Mono (OFL) and the other picker fonts
       with the app. Needed for correct typography everywhere and for
@@ -58,7 +59,7 @@ suites are what catch regressions.
       container; upload reports as artifacts.
 - [ ] **`parity-refresh.yml`** (manual `workflow_dispatch`): rebuild Hype in
       Docker, re-render the reference images, and open a PR with the changes.
-- [ ] **Deploy to GitHub Pages** on push to `main` via
+- [x] **Deploy to GitHub Pages** on push to `main` via
       `actions/upload-pages-artifact` + `actions/deploy-pages`. See
       [Hosting](#hosting).
 
@@ -155,4 +156,3 @@ hosting on Cloudflare Pages or Netlify.
 
 - Pin the parity suite to a specific Hype commit (recommended; update
   deliberately via `parity-refresh.yml`) or track Hype's latest `main`?
-- Deploy to GitHub Pages automatically on push to `main`?

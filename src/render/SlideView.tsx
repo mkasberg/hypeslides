@@ -59,6 +59,8 @@ const CSS = `
 .hs-svg{position:absolute;display:flex;align-items:center;justify-content:center;fill:var(--foreground);color:var(--foreground);font-family:var(--font)}
 .hs-svg svg{width:100%;height:100%;display:block}
 .hs-missing{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;color:var(--accent);font:32px system-ui,sans-serif;overflow:hidden;padding:8px;word-break:break-all}
+.hs-undecodable{position:absolute;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center;text-align:center;background:#111;color:#fff;font:36px system-ui,sans-serif;overflow:hidden;padding:40px;word-break:break-word}
+.hs-undecodable small{font-size:26px;opacity:.7}
 .hs-play{position:absolute;width:150px;height:150px;border-radius:50%;border:8px solid rgba(255,255,255,.9);background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
 .hs-play::after{content:'';margin-left:14px;border-left:50px solid rgba(255,255,255,.95);border-top:30px solid transparent;border-bottom:30px solid transparent}
 .hs-problem{position:absolute;left:0;right:0;bottom:0;height:80px;background:#9b3030;color:#fff;font:21px system-ui,sans-serif;display:flex;align-items:center;padding:0 30px}
@@ -317,6 +319,19 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   const showMissing = hasFile && fileUrl === null
   const live = mode === 'present'
 
+  // A video whose picture this browser can't decode (e.g. HEVC in Chrome on
+  // Linux) loads without an error and plays its audio over black, reporting
+  // videoWidth 0. Flag it so the slide says why instead of staying black.
+  const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null)
+  const undecodable = !!fileUrl && undecodableUrl === fileUrl
+  const checkDecodable = (e: { currentTarget: HTMLVideoElement }) => {
+    const v = e.currentTarget
+    if (fileUrl && v.videoWidth === 0 && v.videoHeight === 0) setUndecodableUrl(fileUrl)
+  }
+  const onVideoError = (e: { currentTarget: HTMLVideoElement }) => {
+    if (fileUrl && e.currentTarget.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) setUndecodableUrl(fileUrl)
+  }
+
   return (
     <div ref={outerRef} className="hs-outer" style={{ background: fill }}>
       <div className="hs-slide" style={cssVars}>
@@ -357,6 +372,8 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
               loop={live && media.loop}
               muted={media.muted || !live}
               playsInline
+              onLoadedMetadata={checkDecodable}
+              onError={onVideoError}
               style={{ ...rectStyle(mrect), objectFit: span ? 'cover' : 'contain', background: 'transparent' }}
             />
           ) : (
@@ -369,7 +386,14 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             />
           )
         )}
-        {isVideo && fileUrl && !live && (
+        {undecodable && media && (
+          <div className="hs-undecodable" style={rectStyle(mrect)}>
+            <div>This browser can’t play this video’s picture</div>
+            <small>{media.file}</small>
+            <small>Phone videos are often HEVC (H.265). Convert to H.264 MP4 to play everywhere.</small>
+          </div>
+        )}
+        {isVideo && fileUrl && !live && !undecodable && (
           <div
             className="hs-play"
             style={{ left: mrect.x + mrect.w / 2 - 75, top: mrect.y + mrect.h / 2 - 75 }}
