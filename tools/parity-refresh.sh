@@ -8,7 +8,12 @@ IMAGE=hypeslides/hype-reference
 DECKS="$ROOT/tests/parity/decks"
 REF="$ROOT/tests/parity/reference"
 
-docker build -q -t "$IMAGE" "$ROOT/tools/hype-reference" >/dev/null
+# HYPE_COMMIT / OMARCHY_COMMIT override the Dockerfile's pinned defaults.
+build_args=""
+[ -n "${HYPE_COMMIT:-}" ] && build_args="$build_args --build-arg HYPE_COMMIT=$HYPE_COMMIT"
+[ -n "${OMARCHY_COMMIT:-}" ] && build_args="$build_args --build-arg OMARCHY_COMMIT=$OMARCHY_COMMIT"
+# shellcheck disable=SC2086
+docker build -q $build_args -t "$IMAGE" "$ROOT/tools/hype-reference" >/dev/null
 
 BASE=$(sed -n 's/^FROM[[:space:]]\{1,\}\([^[:space:]]\{1,\}\).*/\1/p' "$ROOT/tools/hype-reference/Dockerfile" | head -n1)
 COMMIT=$(docker run --rm --entrypoint cat "$IMAGE" /hype-commit | tr -d '[:space:]')

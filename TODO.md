@@ -58,8 +58,9 @@ suites are what catch regressions.
   - Emit an HTML report (Hype | ours | diff) as a CI artifact.
 - [ ] **CI, extended:** run the Playwright and parity suites in the Playwright
       container; upload reports as artifacts.
-- [ ] **`parity-refresh.yml`** (manual `workflow_dispatch`): rebuild Hype in
-      Docker, re-render the reference images, and open a PR with the changes.
+- [x] **`parity-refresh.yml`** (manual `workflow_dispatch`): rebuild Hype in
+      Docker, re-render the reference images, and open a PR with the changes. Inputs move the Hype and Omarchy pins;
+      needs "Allow GitHub Actions to create pull requests" in repo settings.
 - [x] **Deploy to GitHub Pages** on push to `main` via
       `actions/upload-pages-artifact` + `actions/deploy-pages`. See
       [Hosting](#hosting).
