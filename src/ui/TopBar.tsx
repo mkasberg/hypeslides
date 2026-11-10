@@ -1,9 +1,12 @@
-import { THEMES, fontFor, headerOf, selectionRange, slideCount, themeName, title as docTitle } from '../core'
+import { useSyncExternalStore } from 'react'
+import { fontFor, headerOf, selectionRange, slideCount, themeName, title as docTitle } from '../core'
 import { runCommand } from '../app/shortcuts'
 import { isDirty } from '../app/store'
 import { useApp } from '../app/useApp'
 import { Dropdown } from './Menu'
 import type { MenuItem } from './Menu'
+import { getAppThemePref, previewAppTheme, prettyThemeName, setAppThemePref, subscribeAppTheme } from '../app/appTheme'
+import { Popover, ThemeList, allThemeOptions, systemOption } from './ThemeList'
 import { ChevronIcon, FileIcon, FontIcon, GridIcon, PaletteIcon, PlayIcon } from './icons'
 
 const FONTS = [
@@ -11,7 +14,9 @@ const FONTS = [
   'Inter', 'system-ui', 'Helvetica', 'Arial', 'Verdana', 'Trebuchet MS', 'Georgia', 'Times New Roman', 'Palatino',
 ]
 
-const prettyTheme = (n: string) => n.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+const prettyTheme = prettyThemeName
+const PRESENTATION_OPTIONS = allThemeOptions()
+const APP_OPTIONS = [systemOption(), ...PRESENTATION_OPTIONS]
 const isChromium = () => typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'
 
 export function storageLabel(s: { store: { kind: string; name: string } | null; doc: { source: string }; savedSource: string; saving: boolean }): string {
@@ -32,6 +37,8 @@ export function TopBar() {
   const status = useApp((s) => s.status)
   const statusFailed = useApp((s) => s.statusFailed)
   const setTheme = useApp((s) => s.setTheme)
+  const setThemePreview = useApp((s) => s.setThemePreview)
+  const appThemePref = useSyncExternalStore(subscribeAppTheme, getAppThemePref)
   const setFont = useApp((s) => s.setFont)
   const header = headerOf(doc)
   const name = docTitle(header, store?.name ?? 'Untitled')
@@ -54,15 +61,7 @@ export function TopBar() {
     { label: 'Save', shortcut: 'Ctrl+S', onSelect: () => runCommand('file.save') },
     ...(chromium ? [{ label: 'Save as…', shortcut: 'Ctrl+Shift+S', onSelect: () => runCommand('file.saveAs') }] : []),
     { label: store || !chromium ? 'Export (.md / .zip)' : 'Export (.md)', shortcut: 'Ctrl+E', onSelect: () => runCommand('file.export') },
-    { separator: true },
-    { label: 'Keyboard shortcuts', shortcut: '?', onSelect: () => runCommand('help.shortcuts') },
   ]
-  const themeItems: MenuItem[] = THEMES.map((t) => ({
-    label: prettyTheme(t.name),
-    checked: t.name === theme,
-    swatch: [t.colors.background, t.colors.accent, t.colors.foreground],
-    onSelect: () => setTheme(t.name),
-  }))
   const fontItems: MenuItem[] = fonts.map((f) => ({
     label: f, checked: f === font, labelStyle: { fontFamily: `'${f}', sans-serif` }, onSelect: () => setFont(f),
   }))
@@ -70,7 +69,25 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="top-left">
-        <button type="button" className="logo" title="Keyboard shortcuts (?)" onClick={() => runCommand('help.shortcuts')}>Hype</button>
+        <Popover className="logo" title="Appearance" button="Hype" onClose={() => previewAppTheme(null)}>
+          {(close) => (
+            <>
+              <div className="menu-heading">App theme</div>
+              <ThemeList
+                options={APP_OPTIONS}
+                value={appThemePref}
+                onPreview={previewAppTheme}
+                onCommit={(v) => { setAppThemePref(v); close() }}
+              />
+              <div className="menu-sep" role="separator" />
+              <button type="button" role="menuitem" className="menu-item" onClick={() => { close(); runCommand('help.shortcuts') }}>
+                <span className="menu-check" />
+                <span className="menu-label">Keyboard shortcuts…</span>
+                <span className="menu-shortcut">?</span>
+              </button>
+            </>
+          )}
+        </Popover>
         <Dropdown className={'icon-btn' + (dirty ? ' attention' : '')} title={dirty ? 'File menu (unsaved changes)' : 'File menu'} items={fileItems}>
           <FileIcon />
         </Dropdown>
@@ -87,9 +104,25 @@ export function TopBar() {
           <button type="button" className={mode === 'visual' || (mode === 'overview' && prevMode === 'visual') ? 'on' : ''} onClick={() => runCommand('view.visual')}>Visual</button>
           <button type="button" className={mode === 'markdown' || (mode === 'overview' && prevMode === 'markdown') ? 'on' : ''} onClick={() => runCommand('view.markdown')}>Markdown</button>
         </div>
-        <Dropdown className="pill" title="Theme" items={themeItems} alignRight>
-          <PaletteIcon /> <span>{prettyTheme(theme)}</span> <ChevronIcon />
-        </Dropdown>
+        <Popover
+          className="pill"
+          title="Presentation theme"
+          alignRight
+          button={<><PaletteIcon /> <span>{prettyTheme(theme)}</span> <ChevronIcon /></>}
+          onClose={() => setThemePreview(null)}
+        >
+          {(close) => (
+            <>
+              <div className="menu-heading">Presentation theme</div>
+              <ThemeList
+                options={PRESENTATION_OPTIONS}
+                value={theme}
+                onPreview={setThemePreview}
+                onCommit={(v) => { setTheme(v); close() }}
+              />
+            </>
+          )}
+        </Popover>
         <Dropdown className="pill" title="Font" items={fontItems} alignRight>
           <FontIcon /> <span className="font-name">{font}</span> <ChevronIcon />
         </Dropdown>

@@ -30,32 +30,32 @@ const frontMatter = ViewPlugin.fromClass(class {
 }, { decorations: (v) => v.decorations })
 
 const highlight = HighlightStyle.define([
-  { tag: t.heading, color: 'var(--accent)', fontWeight: '700' },
+  { tag: t.heading, color: 'var(--ui-syntax-heading)', fontWeight: '700' },
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
-  { tag: t.link, color: 'var(--accent)' },
-  { tag: t.url, color: 'var(--accent)' },
-  { tag: t.monospace, color: 'var(--code)' },
-  { tag: t.quote, color: 'var(--muted)' },
-  { tag: [t.processingInstruction, t.meta, t.contentSeparator], color: 'var(--muted)' },
-  { tag: t.comment, color: 'var(--muted)', fontStyle: 'italic' },
-  { tag: t.string, color: 'var(--code)' },
-  { tag: [t.propertyName, t.keyword], color: 'var(--accent)' },
+  { tag: t.link, color: 'var(--ui-syntax-link)' },
+  { tag: t.url, color: 'var(--ui-syntax-link)' },
+  { tag: t.monospace, color: 'var(--ui-syntax-code)' },
+  { tag: t.quote, color: 'var(--ui-syntax-quote)' },
+  { tag: [t.processingInstruction, t.meta, t.contentSeparator], color: 'var(--ui-syntax-comment)' },
+  { tag: t.comment, color: 'var(--ui-syntax-comment)', fontStyle: 'italic' },
+  { tag: t.string, color: 'var(--ui-syntax-string)' },
+  { tag: [t.propertyName, t.keyword], color: 'var(--ui-syntax-keyword)' },
 ])
 
 const theme = EditorView.theme({
-  '&': { height: '100%', color: 'var(--fg)', backgroundColor: 'var(--editor-bg)' },
+  '&': { height: '100%', color: 'var(--ui-foreground)', backgroundColor: 'var(--ui-background)' },
   '.cm-scroller': { fontFamily: "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace", lineHeight: '1.6', fontSize: '15px' },
-  '.cm-content': { caretColor: 'var(--fg)', padding: '14px 0' },
+  '.cm-content': { caretColor: 'var(--ui-foreground)', padding: '14px 0' },
   '.cm-line': { padding: '0 18px' },
   '&.cm-focused': { outline: 'none' },
-  '.cm-cursor': { borderLeftColor: 'var(--fg)' },
-  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': { backgroundColor: 'var(--selection) !important' },
-  '.cm-activeLine': { backgroundColor: 'var(--active-line)' },
-  '.cm-gutters': { backgroundColor: 'var(--editor-bg)', color: 'var(--muted)', border: 'none' },
-  '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--fg)' },
-  '.cm-frontmatter, .cm-frontmatter *': { color: 'var(--muted) !important', fontWeight: '400 !important', fontStyle: 'normal !important' },
-  '.cm-placeholder': { color: 'var(--muted)' },
+  '.cm-cursor': { borderLeftColor: 'var(--ui-foreground)' },
+  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': { backgroundColor: 'var(--ui-selection) !important' },
+  '.cm-activeLine': { backgroundColor: 'var(--ui-active-line)' },
+  '.cm-gutters': { backgroundColor: 'var(--ui-background)', color: 'var(--ui-muted)', border: 'none' },
+  '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--ui-foreground)' },
+  '.cm-frontmatter, .cm-frontmatter *': { color: 'var(--ui-muted) !important', fontWeight: '400 !important', fontStyle: 'normal !important' },
+  '.cm-placeholder': { color: 'var(--ui-muted)' },
 })
 
 export interface CodeEditorProps {

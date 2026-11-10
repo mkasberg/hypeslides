@@ -58,6 +58,8 @@ export interface AppState {
   redoStack: DocState[]
   dialog: DialogSpec | null
   shortcutsOpen: boolean
+  /** Presentation theme being hovered in the picker (not saved); null when none. */
+  themePreview: string | null
   /** Items per row in Overview (1 elsewhere); used for arrow-key row steps. */
   rowStep: number
   /** Share of the visual column given to the preview. */
@@ -84,6 +86,7 @@ export interface AppState {
   duplicate(): void
   remove(): void
   setTheme(name: string): void
+  setThemePreview(name: string | null): void
   setFont(family: string): void
   layout(op: 'mode' | 'background' | 'position' | 'size', value: string | number): void
   addMediaFiles(files: File[]): Promise<void>
@@ -292,6 +295,7 @@ export function createAppStore(env: Env): AppStore {
       redoStack: [],
       dialog: null,
       shortcutsOpen: false,
+      themePreview: null,
       rowStep: 1,
       splitRatio: 0.58,
       dropActive: false,
@@ -394,6 +398,9 @@ export function createAppStore(env: Env): AppStore {
       },
       remove() {
         guarded(deleteSlides)
+      },
+      setThemePreview(name) {
+        set({ themePreview: name })
       },
       setTheme(name) {
         guarded((d) => setTheme(d, name))

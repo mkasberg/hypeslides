@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
-import { fontFor, headerOf, paletteFor } from '../core'
+import { fontFor, headerOf, paletteFor, setTheme } from '../core'
 import { useApp } from '../app/useApp'
 
 /** Palette, font and media resolver for rendering the current deck. */
@@ -8,7 +8,11 @@ export function useDeckLook() {
   const header = useApp((s) => headerOf(s.doc))
   const media = useApp((s) => s.media)
   const mediaRev = useApp((s) => s.mediaRev)
-  const palette = useMemo(() => paletteFor(header), [header])
+  const preview = useApp((s) => s.themePreview)
+  const palette = useMemo(
+    () => paletteFor(preview ? headerOf(setTheme(useApp.getState().doc, preview)) : header),
+    [header, preview],
+  )
   const font = fontFor(header)
   const resolveMedia = useMemo(
     () => (name: string) => (media ? media.resolve(name) : Promise.resolve(null)),
