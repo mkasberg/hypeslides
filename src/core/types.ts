@@ -96,7 +96,10 @@ export interface Palette {
 
 export interface Theme {
   name: string // e.g. 'tokyo-night'
+  /** The slide palette (what presentations use). */
   colors: Palette
+  /** Every hex key of the theme's Omarchy colors.toml (selection, muted, bright_*, ...), for the app UI theme. */
+  all: Record<string, string>
   /** True for light themes (`mode = "light"`). */
   light?: boolean
 }
