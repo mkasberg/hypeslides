@@ -24,7 +24,7 @@ suites are what catch regressions.
       with the app. Needed for correct typography everywhere and for
       deterministic screenshots and parity comparisons. Update our license as
       needed to call these files out.
-- [ ] **Playwright suite** (`@playwright/test`):
+- [x] **Playwright suite** (`@playwright/test`):
   - Functional tests on Chromium: import a folder, edit,
     reload and check persistence, save through a faked
     `showDirectoryPicker`, add media, reorder slides.
