@@ -53,7 +53,7 @@ export function VisualView() {
   const col = useRef<HTMLDivElement>(null)
   return (
     <div className="workspace">
-      <aside className="sidebar"><SlideList variant="sidebar" /></aside>
+      <aside className="side-pane"><SlideList variant="sidebar" /></aside>
       <div className="main-col" ref={col}>
         <div style={{ flex: `${ratio} 1 0`, minHeight: 80, display: 'flex' }}><Preview /></div>
         <Divider containerRef={col} />
@@ -106,7 +106,7 @@ export function MarkdownView() {
 
   return (
     <div className="workspace">
-      <aside className="sidebar"><SlideList variant="sidebar" /></aside>
+      <aside className="side-pane"><SlideList variant="sidebar" /></aside>
       <div className="main-col source-col">
         <FormatBar />
         <CodeEditor
