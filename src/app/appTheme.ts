@@ -84,6 +84,7 @@ export function uiTokens(theme: Theme): Record<string, string> {
     'syntax-link': v.cyan ?? pal.cyan,
     'syntax-keyword': v.magenta ?? pal.magenta,
     'syntax-quote': mix(bg, fg, 0.62),
+    'shadow-sm': theme.light ? '0 1px 3px rgba(0, 0, 0, 0.18)' : '0 1px 4px rgba(0, 0, 0, 0.55)',
     scrim: 'color-mix(in srgb, black 50%, transparent)',
     shadow: theme.light ? '0 8px 28px rgba(0, 0, 0, 0.18)' : '0 8px 28px rgba(0, 0, 0, 0.5)',
     'color-scheme': theme.light ? 'light' : 'dark',

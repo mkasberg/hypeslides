@@ -40,7 +40,7 @@ describe('uiTokens', () => {
     for (const t of THEMES) {
       const k = uiTokens(t)
       for (const [name, v] of Object.entries(k)) {
-        if (['shadow', 'scrim', 'color-scheme'].includes(name)) continue
+        if (['shadow', 'shadow-sm', 'scrim', 'color-scheme'].includes(name)) continue
         expect(v, `${t.name} ${name}`).toMatch(/^#[0-9a-f]{6}$/)
       }
     }
