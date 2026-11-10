@@ -1,0 +1,25 @@
+{
+    "slides": [
+        {
+            "image": "slide-001.png",
+            "warning": "Text fits below 24px on a 1080p slide"
+        },
+        {
+            "image": "slide-002.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-003.png",
+            "warning": ""
+        },
+        {
+            "image": "slide-004.png",
+            "warning": "Text fits below 24px on a 1080p slide"
+        },
+        {
+            "image": "slide-005.png",
+            "warning": ""
+        }
+    ],
+    "title": "Shrink"
+}
