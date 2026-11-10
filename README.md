@@ -69,8 +69,30 @@ npm run test:e2e:local    # run on the host (needs `npx playwright install chrom
 
 Pass extra Playwright flags after `--`, e.g. `npm run test:e2e -- -g overview`.
 
-`/render-demo.html` on the dev server shows every slide of a sample deck in
-each theme, for checking the renderer.
+`/harness.html` on the dev server is the render harness: `?deck=welcome&slide=3`
+shows one slide of a deck from `tests/parity/decks/` at exactly 1920×1080, and
+`?demo` shows a sample deck in every theme. Programmatic use:
+`window.hypeHarness.render({ markdown, media, slide })`.
+
+### Parity tests
+
+Every slide of the fixture decks in `tests/parity/decks/` is rendered through
+the harness and scored (SSIM, 0 to 1) against Hype's own render in
+`tests/parity/reference/`. Per-slide baselines live in `tests/parity/scores.json`;
+the suite fails when a score drops more than 0.005 below its baseline, or when
+we split a deck into a different number of slides than Hype. Runs in Docker like
+the e2e suite.
+
+```sh
+npm run parity           # compare; HTML report in parity-report/index.html (gitignored)
+npm run parity:update    # raise baselines (PARITY_UPDATE=reset to rewrite them all)
+npm run parity:refresh   # rebuild Hype in Docker and re-render tests/parity/reference/
+```
+
+Hype and the Omarchy themes are pinned to specific commits (recorded in
+`tests/parity/reference/manifest.json`) and only change deliberately via
+`parity:refresh`. The report shows Hype | ours | diff for each slide, worst
+first.
 
 Code layout is described in [CLAUDE.md](CLAUDE.md).
 
