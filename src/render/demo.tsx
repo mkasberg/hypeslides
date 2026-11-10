@@ -1,4 +1,5 @@
 // Temporary dev harness: npx vite, then open /render-demo.html
+import '../fonts.css'
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { THEMES, paletteFor, parseDeck, scalar } from '../core'

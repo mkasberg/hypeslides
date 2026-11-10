@@ -20,11 +20,12 @@ suites are what catch regressions.
 
 - [x] **CI basics** (`.github/workflows/ci.yml`, on push and PR): `npm ci`,
       lint (oxlint), typecheck, Vitest, build.
-- [ ] **Bundle fonts.** Ship JetBrains Mono (OFL) and the other picker fonts
+- [x] **Bundle fonts.** Ship JetBrains Mono (OFL) and the other picker fonts
       with the app. Needed for correct typography everywhere and for
-      deterministic screenshots and parity comparisons.
+      deterministic screenshots and parity comparisons. Update our license as
+      needed to call these files out.
 - [ ] **Playwright suite** (`@playwright/test`):
-  - Functional tests on Chromium, Firefox, and WebKit: import a folder, edit,
+  - Functional tests on Chromium: import a folder, edit,
     reload and check persistence, save through a faked
     `showDirectoryPicker`, add media, reorder slides.
   - A small screenshot regression suite on Chromium (`toHaveScreenshot` with a
@@ -41,6 +42,8 @@ suites are what catch regressions.
   - `npm run parity:refresh` runs `hype render <deck> -o <dir>` on fixture
     decks and commits the PNGs plus `slides.json` under
     `tests/parity/reference/`, with the Hype commit recorded in a manifest.
+    Use Hype's fixture decks as a start, add our own if we need additional
+    verification.
   - Fixture decks: `welcome.md`, Hype's `tests/fixtures`, the example slides
     in Hype's `plans/hype.md`, plus decks covering tables, code languages,
     every media mode (small committed images and a short video), placed
