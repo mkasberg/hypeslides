@@ -61,3 +61,6 @@ Code layout is described in [CLAUDE.md](CLAUDE.md).
 ## License
 
 MIT. Ported from Hype, Copyright (c) 2026 David Heinemeier Hansson; see [LICENSE](LICENSE).
+
+Bundled fonts (JetBrains Mono, Fira Code, Source Code Pro, Inter) are licensed
+under the SIL Open Font License 1.1; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
