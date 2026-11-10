@@ -115,8 +115,8 @@ export function saveAppThemePref(pref: string): void {
   } catch { /* storage blocked */ }
 }
 
-/** Set the tokens as CSS variables on <html>, update color-scheme and the browser chrome color; cache them for the next load. */
-export function applyAppTheme(tokens: Record<string, string>): void {
+/** Set the tokens as CSS variables on <html>, update color-scheme and the browser chrome color; when `cache`, keep them for the next load. */
+export function applyAppTheme(tokens: Record<string, string>, cache = true): void {
   const root = document.documentElement
   for (const [k, val] of Object.entries(tokens)) {
     if (k === 'color-scheme') root.style.colorScheme = val
@@ -129,6 +129,7 @@ export function applyAppTheme(tokens: Record<string, string>): void {
     document.head.appendChild(meta)
   }
   meta.content = tokens.panel
+  if (!cache) return
   try {
     localStorage.setItem(TOKENS_KEY, JSON.stringify(tokens))
   } catch { /* storage blocked */ }
@@ -153,8 +154,10 @@ const emit = () => listeners.forEach((l) => l())
 function render(transition: boolean) {
   const pref = preview ?? committed
   const tokens = uiTokens(resolveAppTheme(pref, darkQuery()?.matches ?? true))
-  if (transition) withViewTransition(() => applyAppTheme(tokens))
-  else applyAppTheme(tokens)
+  // Never cache a hover preview: the next load should show the committed theme.
+  const apply = () => applyAppTheme(tokens, preview === null)
+  if (transition) withViewTransition(apply)
+  else apply()
 }
 
 /** Load the saved preference, apply it, and follow the OS setting while it is 'system'. Returns a cleanup. */
