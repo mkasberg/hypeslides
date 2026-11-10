@@ -24,6 +24,7 @@ exec docker run --rm --init --ipc=host "${tty_flags[@]}" \
   -e HOME=/tmp/home \
   -e npm_config_cache=/work/node_modules/.npm-cache \
   -e CI="${CI:-}" \
+  -e PARITY_UPDATE="${PARITY_UPDATE:-}" \
   -v "$PWD":/work \
   -v "$PWD/.docker-node_modules":/work/node_modules \
   -w /work \

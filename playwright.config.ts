@@ -6,14 +6,13 @@ import { defineConfig, devices } from '@playwright/test'
 const PORT = 4173
 
 export default defineConfig({
-  testDir: './e2e',
   outputDir: './test-results',
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: process.env.CI ? 2 : undefined,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: [['list'], ['html', { open: 'never' }], ['./tests/parity/reporter.ts']],
   expect: {
     toHaveScreenshot: {
       animations: 'disabled',
@@ -33,7 +32,19 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  // `playwright test` without --project runs both; the npm scripts always pick one.
+  projects: [
+    { name: 'chromium', testDir: './e2e', use: { browserName: 'chromium' } },
+    {
+      // Hype parity suite (npm run parity); a 1920x1080 viewport so the harness
+      // stage is captured 1:1.
+      name: 'parity',
+      testDir: './tests/parity',
+      testMatch: '**/*.spec.ts',
+      timeout: 300_000,
+      use: { browserName: 'chromium', viewport: { width: 1920, height: 1080 } },
+    },
+  ],
   webServer: {
     command: `npm run build && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
     url: `http://localhost:${PORT}`,
