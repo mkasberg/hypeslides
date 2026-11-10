@@ -10,9 +10,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "test:e2e": "tools/playwright-docker.sh",
-    "test:e2e:update": "tools/playwright-docker.sh --update-snapshots",
-    "test:e2e:local": "playwright test"
+    "test:e2e": "tools/playwright-docker.sh --project=chromium",
+    "test:e2e:update": "tools/playwright-docker.sh --project=chromium --update-snapshots",
+    "test:e2e:local": "playwright test --project=chromium",
+    "parity": "tools/playwright-docker.sh --project=parity",
+    "parity:update": "PARITY_UPDATE=1 tools/playwright-docker.sh --project=parity",
+    "parity:refresh": "tools/parity-refresh.sh"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -39,12 +42,16 @@
     "@playwright/test": "1.65.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^24.19.2",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "fake-indexeddb": "^6.2.8",
     "jsdom": "^29.1.1",
     "oxlint": "^1.90.0",
+    "pixelmatch": "^8.0.0",
+    "pngjs": "^7.0.0",
+    "ssim.js": "^3.5.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
