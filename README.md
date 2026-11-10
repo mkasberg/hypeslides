@@ -1,8 +1,14 @@
-# Hype Web
+# HypeSlides
+
+**[hypeslides.app](https://hypeslides.app)**
 
 A browser port of [Hype](https://github.com/omacom/hype): simple presentations
 written in Markdown, with a visual editor to put everything in order. It runs
 entirely in the browser and works from any static server.
+
+> HypeSlides is an unofficial, independent port. It is not affiliated with or
+> endorsed by Omacom or the Hype project. Hype's code is used under its MIT
+> license.
 
 A presentation is a folder holding a Markdown file, with its media beside it:
 

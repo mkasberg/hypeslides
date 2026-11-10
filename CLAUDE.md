@@ -1,4 +1,4 @@
-# Hype Web
+# HypeSlides
 
 A browser port of Hype (https://github.com/omacom/hype, MIT), a Markdown slide
 editor. The original Qt/C++ source is at `~/code/hype` — port its behavior and

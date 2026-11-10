@@ -69,7 +69,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="top-left">
-        <Popover className="logo" title="Appearance" button="Hype" onClose={() => previewAppTheme(null)}>
+        <Popover className="logo" title="Appearance" button="HypeSlides" onClose={() => previewAppTheme(null)}>
           {(close) => (
             <>
               <div className="menu-heading">App theme</div>

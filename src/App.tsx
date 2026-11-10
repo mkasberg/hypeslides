@@ -88,7 +88,7 @@ export default function App() {
   const dirty = isDirty({ doc, savedSource })
 
   useEffect(() => {
-    document.title = `${docTitle(headerOf(doc), store?.name ?? 'Untitled')}${dirty ? ' •' : ''} — Hype Web`
+    document.title = `${docTitle(headerOf(doc), store?.name ?? 'Untitled')}${dirty ? ' •' : ''} — HypeSlides`
   }, [doc, store, dirty])
 
   if (!ready) return <div className="boot">Loading…</div>
