@@ -36,7 +36,7 @@ suites are what catch regressions.
   - Generate and compare baselines inside the official Playwright Docker image
     (locally via `npm run test:e2e:update`, and in CI), so local machines and
     CI render identical pixels.
-- [ ] **Hype parity suite.** Compare our slide rendering against Hype's.
+- [x] **Hype parity suite.** Compare our slide rendering against Hype's.
   - Build Hype in Docker (`tools/hype-reference/Dockerfile`: Arch base, Hype's
     PKGBUILD deps, JetBrains Mono) at a pinned commit.
   - `npm run parity:refresh` runs `hype render <deck> -o <dir>` on fixture
@@ -56,8 +56,6 @@ suites are what catch regressions.
     baseline scores and fail only when a score drops below its baseline;
     raise baselines as gaps close.
   - Emit an HTML report (Hype | ours | diff) as a CI artifact.
-  - Later, once exports exist: compare against Hype's own PDF/PPTX of the
-    same decks (page count, `pdftotext` text, embedded media).
 - [ ] **CI, extended:** run the Playwright and parity suites in the Playwright
       container; upload reports as artifacts.
 - [ ] **`parity-refresh.yml`** (manual `workflow_dispatch`): rebuild Hype in
@@ -101,6 +99,9 @@ suites are what catch regressions.
 
 - [ ] **PDF export.** Print all slides via `window.print()` with `@page` CSS
       sized 16:9; text stays vector. The browser's print dialog appears.
+  - [ ] Once PDF/PPTX export exists, extend the parity suite to compare
+        against Hype's own PDF/PPTX of the same decks (page count,
+        `pdftotext` text, embedded media).
 - [ ] **PPTX export.** Rasterize slides at 3840×2160 (snapdom or
       html-to-image) and package with PptxGenJS; embed videos as-is.
       Converting animated GIF/WebP to MP4 (WebCodecs + an MP4 muxer) can come
@@ -154,8 +155,3 @@ The one limitation is that Pages can't set custom headers. That matters only
 if we use multithreaded ffmpeg.wasm, which needs COOP/COEP for
 `SharedArrayBuffer`. Prefer WebCodecs; fallbacks are `coi-serviceworker` or
 hosting on Cloudflare Pages or Netlify.
-
-## Open decisions
-
-- Pin the parity suite to a specific Hype commit (recommended; update
-  deliberately via `parity-refresh.yml`) or track Hype's latest `main`?
