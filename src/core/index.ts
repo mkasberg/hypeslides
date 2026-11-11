@@ -5,6 +5,7 @@ export {
   withMedia, withReplacedMedia, withMediaDirectives, mediaWithMode, mediaWithBackground, mediaWithPosition,
   mediaWithSize,
 } from './media'
+export * from './mediaImport'
 export { isValidColor } from './colors'
 export * from './commands'
 export {

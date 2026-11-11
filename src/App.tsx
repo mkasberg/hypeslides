@@ -4,7 +4,7 @@ import { mediaKind } from './storage'
 import { installShortcuts } from './app/shortcuts'
 import { isDirty } from './app/store'
 import { useApp } from './app/useApp'
-import { ConfirmDialog, ShortcutsOverlay } from './ui/Dialogs'
+import { ConfirmDialog, PasteDialog, ShortcutsOverlay } from './ui/Dialogs'
 import { PresentView } from './ui/PresentView'
 import { TopBar, storageLabel } from './ui/TopBar'
 import { MarkdownView, OverviewView, VisualView } from './ui/Views'
@@ -25,7 +25,9 @@ function useWindowBehavior() {
       const files = Array.from(e.clipboardData?.files ?? []).filter((f) => mediaKind(f.name || 'image.png') || f.type.startsWith('image/'))
       if (!files.length) return
       e.preventDefault()
-      void useApp.getState().addMediaFiles(files.map((f) => (f.name ? f : new File([f], 'image.png', { type: f.type }))))
+      // Like Hype, paste takes the first file and asks what to call it.
+      const [first] = files
+      void useApp.getState().pasteMedia(first.name ? first : new File([first], 'image.png', { type: first.type }))
     }
     const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
     let depth = 0
@@ -113,6 +115,7 @@ export default function App() {
       {presenting && <PresentView />}
       {dropActive && <div className="drop-overlay">Drop a folder to open it, or an image / video to add it to the slide</div>}
       <ConfirmDialog />
+      <PasteDialog />
       <ShortcutsOverlay />
     </div>
   )
