@@ -1,18 +1,14 @@
 import { useSyncExternalStore } from 'react'
-import { fontFor, headerOf, selectionRange, slideCount, themeName, title as docTitle } from '../core'
+import { fontFor, headerOf, pickerFonts, selectionRange, slideCount, themeName, title as docTitle } from '../core'
 import { runCommand } from '../app/shortcuts'
 import { isDirty } from '../app/store'
 import { useApp } from '../app/useApp'
+import { loadLocalFonts, useLocalFonts } from '../app/localFonts'
 import { Dropdown } from './Menu'
 import type { MenuItem } from './Menu'
 import { getAppThemePref, previewAppTheme, prettyThemeName, setAppThemePref, subscribeAppTheme } from '../app/appTheme'
 import { Popover, ThemeList, allThemeOptions, systemOption } from './ThemeList'
 import { ChevronIcon, FileIcon, FontIcon, GitHubIcon, GridIcon, MarkdownIcon, PaletteIcon, PlayIcon, VisualIcon } from './icons'
-
-const FONTS = [
-  'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Menlo', 'Consolas', 'Courier New',
-  'Inter', 'system-ui', 'Helvetica', 'Arial', 'Verdana', 'Trebuchet MS', 'Georgia', 'Times New Roman', 'Palatino',
-]
 
 const prettyTheme = prettyThemeName
 const PRESENTATION_OPTIONS = allThemeOptions()
@@ -46,7 +42,8 @@ export function TopBar() {
   const position = count > 1 ? `${count} slides selected` : `Slide ${doc.selected + 1} of ${n}`
   const theme = themeName(header)
   const font = fontFor(header)
-  const fonts = FONTS.includes(font) ? FONTS : [font, ...FONTS]
+  const local = useLocalFonts()
+  const fonts = pickerFonts(font, local.families)
   const chromium = isChromium()
   const storage = storageLabel({ store, doc, savedSource, saving })
 
@@ -61,9 +58,17 @@ export function TopBar() {
     ...(chromium ? [{ label: 'Save as…', shortcut: 'Ctrl+Shift+S', onSelect: () => runCommand('file.saveAs') }] : []),
     { label: store || !chromium ? 'Export (.md / .zip)' : 'Export (.md)', shortcut: 'Ctrl+E', onSelect: () => runCommand('file.export') },
   ]
-  const fontItems: MenuItem[] = fonts.map((f) => ({
-    label: f, checked: f === font, labelStyle: { fontFamily: `'${f}', sans-serif` }, onSelect: () => setFont(f),
-  }))
+  const fontItem = (f: string): MenuItem => ({
+    label: f, checked: f.toLowerCase() === font.toLowerCase(), labelStyle: { fontFamily: `'${f}', sans-serif` }, onSelect: () => setFont(f),
+  })
+  const fontItems: MenuItem[] = fonts.map(fontItem)
+  if (local.status === 'ready' && local.families.length) {
+    fontItems.push({ separator: true }, { label: `Installed fonts (${local.families.length})`, items: local.families.map(fontItem) })
+  } else if (local.status === 'idle' || local.status === 'loading') {
+    fontItems.push({ separator: true }, { label: local.status === 'loading' ? 'Loading installed fonts…' : 'Show installed fonts…', disabled: local.status === 'loading', onSelect: () => void loadLocalFonts() })
+  } else if (local.status === 'denied') {
+    fontItems.push({ separator: true }, { heading: true, label: 'Installed fonts are blocked. Allow “Fonts” in site settings.' }, { label: 'Try again…', onSelect: () => void loadLocalFonts() })
+  }
 
   return (
     <header className="topbar">

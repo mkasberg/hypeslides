@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { CheckIcon, ChevronIcon } from './icons'
 
@@ -17,6 +17,9 @@ export interface MenuItem {
   /** Inline style for the label (font preview). */
   labelStyle?: React.CSSProperties
 }
+
+/** Menus longer than this style their labels lazily (see Panel). */
+const LONG_MENU = 50
 
 interface PanelProps {
   items: MenuItem[]
@@ -75,9 +78,31 @@ function Panel({ items, x, y, alignRight, flipX, onClose, ignore }: PanelProps) 
     }
   }, [onClose, ignore])
 
+  // Long menus (hundreds of installed fonts) style each label only once it
+  // scrolls into view: resolving every preview font up front blocks the main
+  // thread for seconds. The observer is created on first use from a row's
+  // effect (the menu div is attached by then), so no extra render is needed.
+  const long = items.length > LONG_MENU && typeof IntersectionObserver !== 'undefined'
+  const ioRef = useRef<IntersectionObserver | null>(null)
+  const getLazy = useCallback(() => {
+    ioRef.current ??= new IntersectionObserver((entries, io) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        const el = e.target as HTMLElement
+        el.style.fontFamily = el.dataset.fontFamily ?? ''
+        io.unobserve(el)
+      }
+    }, { root: ref.current, rootMargin: '200px 0px' })
+    return ioRef.current
+  }, [])
+  useEffect(() => () => {
+    ioRef.current?.disconnect()
+    ioRef.current = null
+  }, [])
+
   const [sub, setSub] = useState<number | null>(null)
   return (
-    <div ref={ref} className="menu" role="menu" style={{ left: pos.left, top: pos.top }} onContextMenu={(e) => e.preventDefault()}>
+    <div ref={ref} className={long ? 'menu menu-long' : 'menu'} role="menu" style={{ left: pos.left, top: pos.top }} onContextMenu={(e) => e.preventDefault()}>
       {items.map((item, i) => {
         if (item.separator) return <div key={i} className="menu-sep" role="separator" />
         if (item.heading) return <div key={i} className="menu-heading">{item.label}</div>
@@ -87,6 +112,7 @@ function Panel({ items, x, y, alignRight, flipX, onClose, ignore }: PanelProps) 
             key={i}
             item={item}
             hasSub={hasSub}
+            lazy={long ? getLazy : undefined}
             open={sub === i}
             onHover={() => setSub(hasSub ? i : null)}
             onActivate={() => {
@@ -102,10 +128,18 @@ function Panel({ items, x, y, alignRight, flipX, onClose, ignore }: PanelProps) 
   )
 }
 
-function MenuRow({ item, hasSub, open, onHover, onActivate, onClose }: {
-  item: MenuItem; hasSub: boolean; open: boolean; onHover(): void; onActivate(): void; onClose(): void
+function MenuRow({ item, hasSub, lazy, open, onHover, onActivate, onClose }: {
+  item: MenuItem; hasSub: boolean; lazy?: () => IntersectionObserver; open: boolean; onHover(): void; onActivate(): void; onClose(): void
 }) {
   const ref = useRef<HTMLButtonElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const el = labelRef.current
+    if (!lazy || !el) return
+    const io = lazy()
+    io.observe(el)
+    return () => io.unobserve(el)
+  }, [lazy])
   const [rect, setRect] = useState<DOMRect | null>(null)
   useLayoutEffect(() => {
     if (open && ref.current) setRect(ref.current.getBoundingClientRect())
@@ -134,7 +168,14 @@ function MenuRow({ item, hasSub, open, onHover, onActivate, onClose }: {
             {item.swatch.map((c, i) => <i key={i} style={{ background: c }} />)}
           </span>
         )}
-        <span className="menu-label" style={item.labelStyle}>{item.label}</span>
+        <span
+          ref={labelRef}
+          className="menu-label"
+          style={lazy === undefined ? item.labelStyle : undefined}
+          data-font-family={lazy === undefined ? undefined : item.labelStyle?.fontFamily}
+        >
+          {item.label}
+        </span>
         {item.shortcut && <span className="menu-shortcut">{item.shortcut}</span>}
         {hasSub && <span className="menu-arrow"><ChevronIcon /></span>}
       </button>

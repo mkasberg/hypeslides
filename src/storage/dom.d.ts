@@ -30,3 +30,15 @@ interface Window {
     types?: { description?: string; accept: Record<string, string[]> }[]
   }): Promise<FileSystemFileHandle[]>
 }
+
+// Local Font Access API (Chromium).
+interface FontData {
+  readonly family: string
+  readonly fullName: string
+  readonly postscriptName: string
+  readonly style: string
+}
+
+interface Window {
+  queryLocalFonts?(options?: { postscriptNames?: string[] }): Promise<FontData[]>
+}
