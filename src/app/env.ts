@@ -20,6 +20,10 @@ export interface Env {
   /** OPFS working copy (non-Chromium). */
   openCurrentOpfs(): Promise<PresentationStore | null>
   createOpfs(markdown: string, label?: string): Promise<PresentationStore | null>
+  /** Fresh OPFS area for media added to a deck with no folder yet; null without OPFS. */
+  createPending(): Promise<PresentationStore | null>
+  /** Discard the pending-media area. */
+  clearPending(): Promise<void>
   importFiles(files: File[]): Promise<PresentationStore>
   /** A drop of a folder / .md / .zip; null if nothing usable. */
   importDrop(dt: DataTransfer): Promise<PresentationStore | null>
@@ -41,6 +45,8 @@ export function realEnv(): Env {
     createFolder: createPresentationFolder,
     openCurrentOpfs: () => (caps().opfs ? OpfsStore.openCurrent() : Promise.resolve(null)),
     createOpfs: async (md, label) => (caps().opfs ? OpfsStore.replaceCurrent(md, { label }) : null),
+    createPending: async () => (caps().opfs ? OpfsStore.replacePending() : null),
+    clearPending: () => OpfsStore.clearPending(),
     importFiles: importPickedFiles,
     async importDrop(dt) {
       if (caps().fsAccess) {

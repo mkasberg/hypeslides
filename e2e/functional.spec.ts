@@ -66,6 +66,20 @@ test('adds a pasted image as slide media', async ({ openWithFakeFs }) => {
   await expect.poll(() => fakeText(page, 'presentation.md'), { timeout: 10_000 }).toContain('sample.png')
 })
 
+test('adds media to an unsaved deck and writes it on first save', async ({ openWithFakeFs }) => {
+  const page = await openWithFakeFs()
+  await typeInEditor(page, 'Slide Markdown', '# Draft')
+  await pasteImage(page, fixture('sample.png'), 'sample.png')
+
+  await expect(page.locator('.preview-box img')).toBeVisible()
+  expect(await fakeText(page, 'images/sample.png')).toBeNull()
+
+  await page.keyboard.press('Control+S')
+  await expect(page.locator('.storage-label')).toHaveText(/Saved to disk/)
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __fakeFs: { size(p: string): number | null } }).__fakeFs.size('images/sample.png'))).toBeGreaterThan(1000)
+  await expect(page.locator('.preview-box img')).toBeVisible()
+})
+
 test('opens a folder and reorders slides with the keyboard', async ({ openWithFakeFs }) => {
   const page = await openWithFakeFs({ seed: deckSeed() })
   await menuItem(page, 'File menu', /Open folder/)

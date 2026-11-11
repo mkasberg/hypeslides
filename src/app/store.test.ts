@@ -20,6 +20,8 @@ function fakeEnv(over: Partial<Env> = {}): Env {
     createFolder: async () => ({ status: 'cancelled' }) as CreateStatus,
     openCurrentOpfs: async () => null,
     createOpfs: async () => null,
+    createPending: async () => null,
+    clearPending: async () => {},
     importFiles: async () => { throw new Error('no') },
     importDrop: async () => null,
     exportStore: async () => {},
@@ -279,6 +281,59 @@ describe('save flows', () => {
     await app.getState().addMediaFiles([new File([new Uint8Array([1, 2])], 'pic.png', { type: 'image/png' })])
     expect(dir.get('images/pic.png')).toBeDefined()
     expect(app.getState().doc.source).toContain('pic.png')
+  })
+
+  describe('media on an unsaved deck', () => {
+    const png = (n: number, name = 'pic.png') => new File([new Uint8Array([n])], name, { type: 'image/png' })
+
+    it('is held in pending storage, renders, and is written into the folder on first save', async () => {
+      const pending = new MemoryDirHandle('pending')
+      const dir = new MemoryDirHandle('fresh')
+      const clearPending = vi.fn(async () => {})
+      const createFolder = async (md: string): Promise<CreateStatus> => ({
+        status: 'created', store: await FsAccessStore.create(asDirHandle(dir), md),
+      })
+      const app = createAppStore(fakeEnv({
+        createFolder, clearPending,
+        createPending: async () => FsAccessStore.fromHandle(asDirHandle(pending), { createIfMissing: true }),
+      }))
+      await app.getState().init()
+      await app.getState().addMediaFiles([png(1), png(2)])
+      expect(app.getState().store).toBeNull()
+      expect(app.getState().media).not.toBeNull()
+      expect(pending.get('images/pic.png')).toEqual(new Uint8Array([1]))
+      expect(pending.get('images/pic-2.png')).toEqual(new Uint8Array([2]))
+      expect(app.getState().doc.source).toContain('pic-2.png')
+      expect(dir.get('images/pic.png')).toBeUndefined()
+
+      await app.getState().save()
+      expect(dir.get('images/pic.png')).toEqual(new Uint8Array([1]))
+      expect(dir.get('images/pic-2.png')).toEqual(new Uint8Array([2]))
+      expect(clearPending).toHaveBeenCalled()
+      expect(app.getState().store?.name).toBe('fresh')
+    })
+
+    it('still complains when there is no pending storage', async () => {
+      const app = createAppStore(fakeEnv())
+      await app.getState().init()
+      const before = app.getState().doc.source
+      await app.getState().addMediaFiles([png(1)])
+      expect(app.getState().doc.source).toBe(before)
+      expect(app.getState().statusFailed).toBe(true)
+    })
+
+    it('Save As on a saved deck still copies its media', async () => {
+      const { dir } = await storeWith(deckOf('# A'))
+      const dest = new MemoryDirHandle('copy')
+      const createFolder = async (md: string): Promise<CreateStatus> => ({
+        status: 'created', store: await FsAccessStore.create(asDirHandle(dest), md),
+      })
+      const app = createAppStore(fakeEnv({ createFolder, restoreLast: async () => ({ handle: asDirHandle(dir), granted: true }) }))
+      await app.getState().init()
+      await app.getState().addMediaFiles([png(7)])
+      await app.getState().saveAs()
+      expect(dest.get('images/pic.png')).toEqual(new Uint8Array([7]))
+    })
   })
 })
 
