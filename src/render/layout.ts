@@ -130,3 +130,23 @@ export function parseColor(
   }
   return null
 }
+
+/**
+ * Natural line height (hhea ascent + descent + lineGap, in em) of the bundled
+ * fonts. Qt's ProportionalHeight(N%) scales the font's natural line height,
+ * not its size, but CSS `line-height: <number>` scales the font size, so we
+ * multiply the two ourselves.
+ */
+const NATURAL_LINE_HEIGHT: Record<string, number> = {
+  'jetbrains mono': 1.32,
+  'fira code': 1.312,
+  'source code pro': 1.257,
+  inter: 1.21,
+}
+
+/** CSS unitless `line-height` equal to Qt's `percent`/100 of the font's natural line height. */
+export function lineHeightEm(font: string, scale: number): string {
+  const name = font.replace(/["'\\]/g, '').trim().toLowerCase()
+  const natural = NATURAL_LINE_HEIGHT[name] ?? (/mono|code|courier|consol/.test(name) ? 1.3 : 1.2)
+  return String(+(natural * scale).toFixed(4))
+}
