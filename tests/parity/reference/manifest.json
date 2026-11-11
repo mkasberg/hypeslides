@@ -2,6 +2,6 @@
   "hypeCommit": "278d9805769c61286bd8246dd9b71da475c01ec9",
   "omarchyCommit": "df3d01ce8240ebd6795621987dbb602420980dd0",
   "image": "archlinux:base-devel-20261108.0.623074",
-  "generated": "2026-11-10T04:33:39Z",
+  "generated": "2026-11-11T03:02:38Z",
   "decks": { "code": 10, "color-overrides": 2, "hype-examples": 18, "media": 18, "navigation": 80, "placed-images": 11, "shrink": 5, "svg": 5, "tables": 6, "themes-dark": 8, "themes-light": 8, "welcome": 6 }
 }
