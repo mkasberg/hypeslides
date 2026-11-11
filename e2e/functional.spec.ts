@@ -60,6 +60,10 @@ test('adds a pasted image as slide media', async ({ openWithFakeFs }) => {
   await expect(page.locator('.storage-label')).toHaveText(/Saved to disk/)
 
   await pasteImage(page, fixture('sample.png'), 'sample.png')
+  // Like Hype, paste asks what to call the file (default: its base name).
+  const name = page.getByRole('textbox', { name: 'Filename' })
+  await expect(name).toHaveValue('sample')
+  await page.getByRole('button', { name: 'Save image' }).click()
 
   await expect(page.locator('.preview-box img')).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __fakeFs: { size(p: string): number | null } }).__fakeFs.size('images/sample.png'))).toBeGreaterThan(1000)
@@ -70,6 +74,7 @@ test('adds media to an unsaved deck and writes it on first save', async ({ openW
   const page = await openWithFakeFs()
   await typeInEditor(page, 'Slide Markdown', '# Draft')
   await pasteImage(page, fixture('sample.png'), 'sample.png')
+  await page.getByRole('textbox', { name: 'Filename' }).press('Enter')
 
   await expect(page.locator('.preview-box img')).toBeVisible()
   expect(await fakeText(page, 'images/sample.png')).toBeNull()
@@ -78,6 +83,72 @@ test('adds media to an unsaved deck and writes it on first save', async ({ openW
   await expect(page.locator('.storage-label')).toHaveText(/Saved to disk/)
   await expect.poll(() => page.evaluate(() => (window as unknown as { __fakeFs: { size(p: string): number | null } }).__fakeFs.size('images/sample.png'))).toBeGreaterThan(1000)
   await expect(page.locator('.preview-box img')).toBeVisible()
+})
+
+test('names a pasted image, rejects duplicates, and cancel leaves the deck untouched', async ({ openWithFakeFs }) => {
+  const page = await openWithFakeFs()
+  await typeInEditor(page, 'Slide Markdown', '# Naming')
+  await page.keyboard.press('Control+S')
+  await expect(page.locator('.storage-label')).toHaveText(/Saved to disk/)
+  const fs = (p: string) => page.evaluate((x) => (window as unknown as { __fakeFs: { size(p: string): number | null } }).__fakeFs.size(x), p)
+  const dialogName = page.getByRole('textbox', { name: 'Filename' })
+
+  await pasteImage(page, fixture('sample.png'), 'sample.png')
+  await dialogName.fill('My Picture')
+  await page.keyboard.press('Enter')
+  await expect.poll(() => fs('images/My Picture.png')).toBeGreaterThan(1000)
+
+  // The same name again is refused inside the dialog.
+  await pasteImage(page, fixture('sample.png'), 'sample.png')
+  await dialogName.fill('My Picture.png')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('alert')).toHaveText(/already exists/)
+  await dialogName.fill('a/b')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('alert')).toHaveText(/without folders/)
+
+  // Cancel adds nothing.
+  await page.keyboard.press('Escape')
+  await expect(dialogName).toBeHidden()
+  expect(await fs('images/a/b.png')).toBeNull()
+  expect(await fs('images/sample.png')).toBeNull()
+})
+
+test('fits a huge pasted image to 4K and can cancel while compressing', async ({ openWithFakeFs }) => {
+  const page = await openWithFakeFs()
+  await typeInEditor(page, 'Slide Markdown', 'Plain text, so the image fits')
+  await page.keyboard.press('Control+S')
+  await expect(page.locator('.storage-label')).toHaveText(/Saved to disk/)
+  const paste = () =>
+    page.evaluate(async () => {
+      const c = new OffscreenCanvas(5000, 2500)
+      const ctx = c.getContext('2d')!
+      const g = ctx.createLinearGradient(0, 0, 5000, 2500)
+      g.addColorStop(0, '#f00')
+      g.addColorStop(1, '#00f')
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, 5000, 2500)
+      const dt = new DataTransfer()
+      dt.items.add(new File([await c.convertToBlob({ type: 'image/png' })], 'huge.png', { type: 'image/png' }))
+      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+    })
+  const name = page.getByRole('textbox', { name: 'Filename' })
+
+  await paste()
+  await expect(name).toHaveValue('huge')
+  await page.getByRole('button', { name: 'Save image' }).click()
+  const img = page.locator('.preview-box img')
+  await expect(img).toBeVisible()
+  expect(await img.evaluate((i: HTMLImageElement) => [i.naturalWidth, i.naturalHeight])).toEqual([3840, 1920])
+
+  // Cancelling during compression leaves the deck as it was.
+  await expect.poll(() => fakeText(page, 'presentation.md'), { timeout: 10_000 }).toContain('huge.webp')
+  const before = await fakeText(page, 'presentation.md')
+  await paste()
+  await page.keyboard.press('Escape')
+  await expect(name).toBeHidden()
+  await expect(page.getByRole('progressbar')).toBeHidden()
+  expect(await fakeText(page, 'presentation.md')).toBe(before)
 })
 
 test('opens a folder and reorders slides with the keyboard', async ({ openWithFakeFs }) => {

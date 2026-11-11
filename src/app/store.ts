@@ -8,14 +8,21 @@ import {
   addSlide, createState, deleteSlides, duplicateSlides, dropSelection, editSlide, editSource, extendSelection,
   headerOf, matchImageBackground, moveSelection, newDeckSource, parsedDeck, WELCOME_SLIDE, replaceMedia, select, selectAt,
   setFont, setMediaBackground, setMediaMode, setMediaPosition, setMediaSize, setTheme, slideCount,
-  title as docTitle,
+  title as docTitle, defaultPasteName, isVideoFile, parseMedia, resolvePasteName, selectedSlide, withReplacedMedia,
 } from '../core'
 import type { DocState } from '../core'
 import { createMediaUrlCache, mediaKind } from '../storage'
 import type { MediaUrlCache, PresentationStore } from '../storage'
 import type { Env } from './env'
+import { processPastedMedia } from './imageProcessor'
+import type { ProcessHandle, ProcessedMedia } from './imageProcessor'
 
 export type Mode = 'visual' | 'markdown' | 'overview'
+
+/** A pasted file being compressed, or waiting for the user to name it. */
+export type PasteJob =
+  | { stage: 'processing'; progress: number; video: boolean }
+  | { stage: 'naming'; name: string; ext: string; video: boolean; error: string }
 
 export interface DialogAction {
   label: string
@@ -57,6 +64,7 @@ export interface AppState {
   undoStack: DocState[]
   redoStack: DocState[]
   dialog: DialogSpec | null
+  pasteJob: PasteJob | null
   shortcutsOpen: boolean
   /** Presentation theme being hovered in the picker (not saved); null when none. */
   themePreview: string | null
@@ -90,6 +98,10 @@ export interface AppState {
   setFont(family: string): void
   layout(op: 'mode' | 'background' | 'position' | 'size', value: string | number): void
   addMediaFiles(files: File[]): Promise<void>
+  /** Paste one file: compress, prompt for a name, then add it (Hype's paste flow). */
+  pasteMedia(file: File): Promise<void>
+  submitPasteName(name: string): Promise<void>
+  cancelPaste(): void
   undo(): void
   redo(): void
 
@@ -180,6 +192,9 @@ export function createAppStore(env: Env): AppStore {
   /** OPFS holding media added before the deck has a folder; moved into the folder on first save. */
   let pendingMedia: PresentationStore | null = null
   let dialogResolve: ((v: string) => void) | null = null
+  let pasteHandle: ProcessHandle | null = null
+  let pasteGeneration = 0
+  let pasteResult: ProcessedMedia | null = null
 
   const useApp: AppStore = create<AppState>()((set, get) => {
     const clearTimers = () => {
@@ -309,6 +324,7 @@ export function createAppStore(env: Env): AppStore {
       rowStep: 1,
       splitRatio: 0.58,
       dropActive: false,
+      pasteJob: null,
       saving: false,
 
       async init() {
@@ -456,6 +472,53 @@ export function createAppStore(env: Env): AppStore {
         } catch (e) {
           flash(`Could not add media: ${e instanceof Error ? e.message : e}`, true)
         }
+      },
+
+      async pasteMedia(file) {
+        if (get().pasteJob) return
+        const generation = ++pasteGeneration
+        const video = isVideoFile(file.name)
+        set({ pasteJob: { stage: 'processing', progress: 0, video } })
+        const slide = selectedSlide(get().doc)
+        const span = parseMedia(withReplacedMedia(slide, 'paste.png'))?.span ?? false
+        const handle = processPastedMedia(file, span, (progress) => {
+          const job = get().pasteJob
+          if (generation === pasteGeneration && job?.stage === 'processing') set({ pasteJob: { ...job, progress } })
+        })
+        pasteHandle = handle
+        const result = await handle.promise
+        if (generation !== pasteGeneration) return // cancelled: leave the deck untouched
+        pasteHandle = null
+        pasteResult = result
+        set({ pasteJob: { stage: 'naming', name: defaultPasteName(file.name, result.video), ext: result.ext, video: result.video, error: '' } })
+      },
+      async submitPasteName(input) {
+        const job = get().pasteJob
+        const result = pasteResult
+        if (job?.stage !== 'naming' || !result) return
+        let existing: string[] = []
+        try {
+          existing = (await get().store?.listMedia()) ?? []
+        } catch {
+          /* collisions are re-checked by the store's unique naming */
+        }
+        const resolved = resolvePasteName(input, job.ext, existing)
+        const current = get().pasteJob
+        if (current?.stage !== 'naming') return
+        if (!resolved.ok) {
+          set({ pasteJob: { ...current, name: input, error: resolved.error } })
+          return
+        }
+        pasteResult = null
+        set({ pasteJob: null })
+        await get().addMediaFiles([new File([result.blob], resolved.name, { type: result.blob.type })])
+      },
+      cancelPaste() {
+        pasteGeneration++
+        pasteHandle?.cancel()
+        pasteHandle = null
+        pasteResult = null
+        set({ pasteJob: null })
       },
 
       undo() {

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../app/useApp'
+import type { PasteJob } from '../app/store'
 
 export function ConfirmDialog() {
   const dialog = useApp((s) => s.dialog)
@@ -127,5 +128,81 @@ export function ShortcutsOverlay() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Pasted media: a progress bar with Cancel while compressing, then the name prompt (Hype's pasteDialog). */
+export function PasteDialog() {
+  const job = useApp((s) => s.pasteJob)
+  const cancel = useApp((s) => s.cancelPaste)
+  const stage = job?.stage
+  useEffect(() => {
+    if (!stage) return
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        cancel()
+      }
+    }
+    window.addEventListener('keydown', key, true)
+    return () => window.removeEventListener('keydown', key, true)
+  }, [stage, cancel])
+  if (!job) return null
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
+      {job.stage === 'processing' ? <ProgressBody progress={job.progress} /> : <NameBody job={job} />}
+    </div>
+  )
+}
+
+function ProgressBody({ progress }: { progress: number }) {
+  const cancel = useApp((s) => s.cancelPaste)
+  const button = useRef<HTMLButtonElement>(null)
+  useEffect(() => button.current?.focus(), [])
+  return (
+    <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="paste-title">
+      <h2 id="paste-title">Compressing image…</h2>
+      <progress aria-label="Compressing image" max={1} value={progress} />
+      <div className="dialog-actions">
+        <button ref={button} type="button" className="btn" onClick={cancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+function NameBody({ job }: { job: Extract<PasteJob, { stage: 'naming' }> }) {
+  const submit = useApp((s) => s.submitPasteName)
+  const cancel = useApp((s) => s.cancelPaste)
+  const [name, setName] = useState(job.name)
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    input.current?.focus()
+    input.current?.select()
+  }, [])
+  const noun = job.video ? 'video' : 'image'
+  return (
+    <form
+      className="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="paste-title"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (name.trim()) void submit(name)
+      }}
+    >
+      <h2 id="paste-title">Paste {noun}</h2>
+      <p className="sub">Save to {job.video ? 'videos' : 'images'}/</p>
+      <div className="name-row">
+        <input ref={input} aria-label="Filename" value={name} onChange={(e) => setName(e.target.value)} />
+        <span className="ext">.{job.ext}</span>
+      </div>
+      {job.error && <p className="field-error" role="alert">{job.error}</p>}
+      <div className="dialog-actions">
+        <button type="button" className="btn" onClick={cancel}>Cancel</button>
+        <button type="submit" className="btn primary" disabled={!name.trim()}>Save {noun}</button>
+      </div>
+    </form>
   )
 }
