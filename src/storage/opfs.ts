@@ -19,6 +19,7 @@ import { writeViaWritable } from './fsAccess.ts'
 
 const BASE = 'presentations'
 const CURRENT = 'current'
+const PENDING = 'pending-media'
 
 export function hasOpfs(): boolean {
   return typeof navigator !== 'undefined' && typeof navigator.storage?.getDirectory === 'function'
@@ -125,6 +126,29 @@ export class OpfsStore extends HandleStore {
     const store = new OpfsStore(dir, opts.markdownName ?? 'presentation.md', opts.label ?? 'Untitled')
     await store.writeMarkdown(markdown)
     return store
+  }
+
+  /**
+   * A fresh, empty OPFS area (`presentations/pending-media/`) holding media for
+   * a deck that has no folder yet. Any leftovers are discarded. Only the media
+   * half of the store is used (the markdown file is never written).
+   */
+  static async replacePending(): Promise<OpfsStore> {
+    await OpfsStore.clearPending()
+    const root = await navigator.storage.getDirectory()
+    const base = await root.getDirectoryHandle(BASE, { create: true })
+    const dir = await base.getDirectoryHandle(PENDING, { create: true })
+    return new OpfsStore(dir, 'presentation.md', 'Untitled')
+  }
+
+  static async clearPending(): Promise<void> {
+    try {
+      const root = await navigator.storage.getDirectory()
+      const base = await root.getDirectoryHandle(BASE)
+      await base.removeEntry(PENDING, { recursive: true })
+    } catch {
+      /* nothing pending */
+    }
   }
 
   /** Test seam: wrap any directory handle (e.g. an in-memory fake). */

@@ -177,6 +177,8 @@ export function createAppStore(env: Env): AppStore {
   let saveChain: Promise<void> = Promise.resolve()
   let lastModified = 0
   let lastTyping: { at: number; selected: number } | null = null
+  /** OPFS holding media added before the deck has a folder; moved into the folder on first save. */
+  let pendingMedia: PresentationStore | null = null
   let dialogResolve: ((v: string) => void) | null = null
 
   const useApp: AppStore = create<AppState>()((set, get) => {
@@ -222,9 +224,16 @@ export function createAppStore(env: Env): AppStore {
       pollTimer = setInterval(() => void get().checkExternal(), POLL_MS)
     }
 
+    const dropPending = () => {
+      if (!pendingMedia) return
+      pendingMedia = null
+      void env.clearPending().catch(() => {})
+    }
+
     /** Replace everything with a store's presentation. */
     const loadStore = async (store: PresentationStore, label?: string) => {
       clearTimers()
+      dropPending()
       let text = await store.readMarkdown()
       let initialSaved = text
       if (text.trim() === '') {
@@ -247,6 +256,7 @@ export function createAppStore(env: Env): AppStore {
 
     const newMemoryDeck = (storeNull = true) => {
       clearTimers()
+      dropPending()
       get().media?.revokeAll()
       const source = newDeckSource({ title: 'Untitled', body: WELCOME_SLIDE })
       lastTyping = null
@@ -421,15 +431,24 @@ export function createAppStore(env: Env): AppStore {
         const { store, media } = get()
         const usable = files.filter((f) => mediaKind(f.name || 'image.png'))
         if (!usable.length) return
-        if (!store) {
-          flash('Save the presentation to a folder first (Ctrl+S), then add media.', true)
-          return
-        }
         try {
+          let target = store ?? pendingMedia
+          let cache = media
+          if (!target) {
+            // No folder yet: hold media in OPFS until the first save.
+            target = await env.createPending()
+            if (!target) {
+              flash('Save the presentation to a folder first (Ctrl+S), then add media.', true)
+              return
+            }
+            pendingMedia = target
+            cache = createMediaUrlCache(target)
+            set({ media: cache })
+          }
           for (let i = 0; i < usable.length; i++) {
             const f = usable[i]
-            const name = await store.writeMedia(f.name || 'image.png', f)
-            media?.invalidate(name)
+            const name = await target.writeMedia(f.name || 'image.png', f)
+            cache?.invalidate(name)
             set({ mediaRev: get().mediaRev + 1 })
             if (i > 0) guarded(addSlide)
             guarded((d) => replaceMedia(d, name))
@@ -593,12 +612,14 @@ export function createAppStore(env: Env): AppStore {
               return
             }
           }
-          if (old) {
-            for (const name of await old.listMedia().catch(() => [] as string[])) {
-              const f = await old.readMedia(name)
+          const from = old ?? pendingMedia
+          if (from) {
+            for (const name of await from.listMedia().catch(() => [] as string[])) {
+              const f = await from.readMedia(name)
               if (f) await store.writeMedia(name, f)
             }
           }
+          dropPending()
           const doc = get().doc
           clearTimers()
           get().media?.revokeAll()
