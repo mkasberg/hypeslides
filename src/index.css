@@ -230,3 +230,7 @@ a.icon-btn { color: inherit; text-decoration: none; box-sizing: border-box; }
 .theme-chips i { width: 12px; height: 12px; border-radius: var(--ui-radius); margin-left: -3px; border: 1px solid color-mix(in srgb, var(--ui-foreground) 30%, transparent); }
 .theme-chips i:first-child { margin-left: 0; }
 .theme-row.system .theme-chips { color: var(--ui-muted); font-size: 12px; }
+/* Long menus (installed fonts) apply label styles lazily, so fix the width
+   rather than let the panel grow as preview fonts arrive. */
+.menu.menu-long { width: 280px; }
+.menu.menu-long .menu-label { overflow: hidden; text-overflow: ellipsis; }
