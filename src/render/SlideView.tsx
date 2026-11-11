@@ -32,9 +32,15 @@ const CSS = `
 .hs-body.code{font-family:${MONO};line-height:var(--lh-code);overflow-wrap:normal}
 .hs-body.code *{font-family:${MONO}}
 .hs-body p,.hs-body ul,.hs-body ol,.hs-body blockquote,.hs-body pre,.hs-body table{margin:0 0 .22em}
-.hs-body h1,.hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{margin:.15em 0 .22em;font-weight:700;line-height:var(--lh)}
-.hs-body h1{font-size:1.8em}
-.hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{font-size:1.25em}
+/* Hype sizes headings at 2, 1.5, 1.2, 1, .8, .7 x the body size (Qt FontSizeAdjustment), but sets
+   their margins from the body size, so each margin is divided by the heading's own factor. */
+.hs-body h1,.hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{font-weight:700;line-height:var(--lh)}
+.hs-body h1{font-size:2.0em;margin:0.0750em 0 0.1100em}
+.hs-body h2{font-size:1.5em;margin:0.1000em 0 0.1467em}
+.hs-body h3{font-size:1.2em;margin:0.1250em 0 0.1833em}
+.hs-body h4{font-size:1.0em;margin:0.1500em 0 0.2200em}
+.hs-body h5{font-size:0.8em;margin:0.1875em 0 0.2750em}
+.hs-body h6{font-size:0.7em;margin:0.2143em 0 0.3143em}
 .hs-body strong{color:var(--accent);font-weight:700}
 .hs-body h1 strong,.hs-body h2 strong,.hs-body h3 strong,.hs-body h4 strong{color:inherit}
 .hs-body a{color:var(--accent);text-decoration:none}
