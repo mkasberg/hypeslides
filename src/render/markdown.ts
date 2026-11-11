@@ -12,6 +12,8 @@ export interface RenderOptions {
   highlight?: CodeHighlighter
 }
 
+type Token = ReturnType<InstanceType<typeof MarkdownIt>['parse']>[number]
+
 // Private-use stand-in for the padding spaces: markdown-it trims cells with
 // String.trim(), which would eat a real no-break space.
 const PAD = ''
@@ -87,6 +89,47 @@ function createMarkdown() {
         }
       }
     }
+  })
+  // Qt's Markdown importer makes each source line of a quote its own block
+  // (Hype ends every line with a hard break), so quoted lines get paragraph
+  // spacing instead of <br>. Split quote paragraphs at line breaks.
+  md.core.ruler.push('hype_quote_lines', (state) => {
+    const out: Token[] = []
+    let depth = 0
+    const tokens = state.tokens
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i]
+      if (t.type === 'blockquote_open') depth++
+      else if (t.type === 'blockquote_close') depth--
+      const inline = tokens[i + 1]
+      if (!(depth > 0 && t.type === 'paragraph_open' && inline?.type === 'inline' && inline.children &&
+          tokens[i + 2]?.type === 'paragraph_close' &&
+          inline.children.some((c) => c.type === 'softbreak' || c.type === 'hardbreak'))) {
+        out.push(t)
+        continue
+      }
+      const groups: Token[][] = [[]]
+      for (const c of inline.children) {
+        if (c.type === 'softbreak' || c.type === 'hardbreak') groups.push([])
+        else groups[groups.length - 1].push(c)
+      }
+      for (const group of groups) {
+        if (!group.length) continue
+        const open = new state.Token('paragraph_open', 'p', 1)
+        open.block = true
+        open.level = t.level
+        const text = new state.Token('inline', '', 0)
+        text.level = inline.level
+        text.children = group
+        text.content = group.map((c) => (c.type === 'text' || c.type === 'code_inline' ? c.content : '')).join('')
+        const close = new state.Token('paragraph_close', 'p', -1)
+        close.block = true
+        close.level = t.level
+        out.push(open, text, close)
+      }
+      i += 2
+    }
+    state.tokens = out
   })
   // A paragraph that opens with an em dash is an attribution: set smaller.
   md.core.ruler.push('hype_attribution', (state) => {

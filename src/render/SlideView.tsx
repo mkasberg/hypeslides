@@ -50,7 +50,7 @@ const CSS = `
 .hs-body li{margin:0 0 .22em}
 .hs-body li>p{margin:0}
 .hs-body li>ul,.hs-body li>ol{margin:.22em 0 0}
-.hs-body blockquote{padding-left:.7em;border-left:.08em solid var(--dark-foreground);text-align:left}
+.hs-body blockquote{padding-left:40px;text-align:left}
 .hs-body blockquote>:last-child{margin-bottom:0}
 .hs-body code{font-family:${MONO}}
 .hs-body pre{white-space:pre;tab-size:4;margin:0;text-align:left}
