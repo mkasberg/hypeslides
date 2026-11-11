@@ -68,6 +68,7 @@ export const COMMANDS = {
   'file.saveAs': (s) => void s.saveAs(),
   'file.export': (s) => void s.exportDeck(),
   'view.overview': (s) => withFocusKept(s.toggleOverview),
+  'view.showOverview': (s) => withFocusKept(() => s.setMode('overview')),
   'view.source': (s) => withFocusKept(s.toggleSource),
   'view.visual': (s) => withFocusKept(() => s.setMode('visual')),
   'view.markdown': (s) => withFocusKept(() => s.setMode('markdown')),

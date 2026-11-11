@@ -7,7 +7,7 @@ import { Dropdown } from './Menu'
 import type { MenuItem } from './Menu'
 import { getAppThemePref, previewAppTheme, prettyThemeName, setAppThemePref, subscribeAppTheme } from '../app/appTheme'
 import { Popover, ThemeList, allThemeOptions, systemOption } from './ThemeList'
-import { ChevronIcon, FileIcon, FontIcon, GitHubIcon, GridIcon, PaletteIcon, PlayIcon } from './icons'
+import { ChevronIcon, FileIcon, FontIcon, GitHubIcon, GridIcon, MarkdownIcon, PaletteIcon, PlayIcon, VisualIcon } from './icons'
 
 const FONTS = [
   'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Menlo', 'Consolas', 'Courier New',
@@ -29,7 +29,6 @@ export function storageLabel(s: { store: { kind: string; name: string } | null; 
 export function TopBar() {
   const doc = useApp((s) => s.doc)
   const mode = useApp((s) => s.mode)
-  const prevMode = useApp((s) => s.prevMode)
   const store = useApp((s) => s.store)
   const dirty = useApp((s) => isDirty(s))
   const savedSource = useApp((s) => s.savedSource)
@@ -100,12 +99,10 @@ export function TopBar() {
         <a className="icon-btn" href="https://github.com/mkasberg/hypeslides" target="_blank" rel="noopener noreferrer" title="HypeSlides on GitHub" aria-label="HypeSlides on GitHub">
           <GitHubIcon />
         </a>
-        <button type="button" className={'icon-btn' + (mode === 'overview' ? ' active' : '')} title="Overview (Ctrl+M)" aria-pressed={mode === 'overview'} onClick={() => runCommand('view.overview')}>
-          <GridIcon />
-        </button>
-        <div className="segmented" role="group" aria-label="Editor mode" title="Visual / Markdown (Ctrl+.)">
-          <button type="button" className={mode === 'visual' || (mode === 'overview' && prevMode === 'visual') ? 'on' : ''} onClick={() => runCommand('view.visual')}>Visual</button>
-          <button type="button" className={mode === 'markdown' || (mode === 'overview' && prevMode === 'markdown') ? 'on' : ''} onClick={() => runCommand('view.markdown')}>Markdown</button>
+        <div className="segmented" role="group" aria-label="View mode">
+          <button type="button" className={mode === 'visual' ? 'on' : ''} aria-label="Visual" title="Visual (Ctrl+.)" aria-pressed={mode === 'visual'} onClick={() => runCommand('view.visual')}><VisualIcon /></button>
+          <button type="button" className={mode === 'markdown' ? 'on' : ''} aria-label="Markdown" title="Markdown (Ctrl+.)" aria-pressed={mode === 'markdown'} onClick={() => runCommand('view.markdown')}><MarkdownIcon /></button>
+          <button type="button" className={mode === 'overview' ? 'on' : ''} aria-label="Overview" title="Overview (Ctrl+M)" aria-pressed={mode === 'overview'} onClick={() => runCommand('view.showOverview')}><GridIcon /></button>
         </div>
         <Popover
           className="pill"
