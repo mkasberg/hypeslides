@@ -1,4 +1,6 @@
-import type { PresentationStore, StoreKind } from './types.ts'
+import type { PresentationStore, SnapshotInfo, StoreKind } from './types.ts'
+import { mergeSnapshots, parseSnapshotId } from '../core/history.ts'
+import type { SnapshotArea } from './history.ts'
 import { mediaKind, pickMarkdown, sanitizeFilename, uniqueName } from './common.ts'
 
 /**
@@ -10,10 +12,16 @@ export abstract class HandleStore implements PresentationStore {
   readonly root: FileSystemDirectoryHandle
   markdownName: string
 
-  protected constructor(root: FileSystemDirectoryHandle, markdownName: string) {
+  /** In-browser (OPFS) version history; null when OPFS is unavailable. */
+  protected readonly history: SnapshotArea | null
+
+  protected constructor(root: FileSystemDirectoryHandle, markdownName: string, history: SnapshotArea | null = null) {
     this.root = root
     this.markdownName = markdownName
+    this.history = history
   }
+
+  abstract get key(): string
 
   get name(): string {
     return this.root.name
@@ -103,8 +111,32 @@ export abstract class HandleStore implements PresentationStore {
     return [...out].sort()
   }
 
-  async snapshot(_text: string): Promise<void> {
-    // Version history plugs in here (later: write timestamped copies under
-    // `.hype-backups/`). No-op for the MVP.
+  // ---- version history ---------------------------------------------------
+
+  async snapshot(text: string): Promise<SnapshotInfo | null> {
+    return (await this.history?.snapshot(text)) ?? null
+  }
+
+  /** Versions kept in the presentation folder itself. Folder-backed stores override. */
+  protected async listFolderBackups(): Promise<SnapshotInfo[]> {
+    return []
+  }
+  protected async readFolderBackup(_file: string): Promise<string> {
+    throw new Error('Version not found')
+  }
+
+  async listSnapshots(): Promise<SnapshotInfo[]> {
+    const opfs = await (this.history?.list() ?? Promise.resolve([]))
+    return mergeSnapshots([opfs, await this.listFolderBackups()])
+  }
+
+  async readSnapshot(id: string): Promise<string> {
+    const parsed = parseSnapshotId(id)
+    if (!parsed) throw new Error('Version not found')
+    if (parsed.source === 'opfs') {
+      if (!this.history) throw new Error('Version not found')
+      return this.history.read(parsed.file)
+    }
+    return this.readFolderBackup(parsed.file)
   }
 }

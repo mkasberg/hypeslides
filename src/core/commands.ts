@@ -296,3 +296,11 @@ export function replaceMedia(state: DocState, file: string): DocState {
 export function createState(source: string): DocState {
   return { source, selected: 0, anchor: 0 }
 }
+
+/**
+ * Restore an earlier version (a snapshot's Markdown) as a normal edit: the
+ * current text stays reachable through undo.
+ */
+export function restoreVersion(state: DocState, source: string): DocState {
+  return editSource(state, source)
+}

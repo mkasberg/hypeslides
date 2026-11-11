@@ -6,13 +6,14 @@ import { create } from 'zustand'
 import type { StoreApi, UseBoundStore } from 'zustand'
 import {
   addSlide, createState, deleteSlides, duplicateSlides, dropSelection, editSlide, editSource, extendSelection,
-  headerOf, matchImageBackground, moveSelection, newDeckSource, parsedDeck, WELCOME_SLIDE, replaceMedia, select, selectAt,
+  headerOf, makeDraft, matchImageBackground, moveSelection, newDeckSource, parsedDeck, parseSnapshotId, recoveryFor,
+  restoreVersion, WELCOME_SLIDE, replaceMedia, select, selectAt,
   setFont, setMediaBackground, setMediaMode, setMediaPosition, setMediaSize, setTheme, slideCount,
   title as docTitle, defaultPasteName, isVideoFile, parseMedia, resolvePasteName, selectedSlide, withReplacedMedia,
 } from '../core'
-import type { DocState } from '../core'
+import type { DocState, PendingRecovery } from '../core'
 import { createMediaUrlCache, mediaKind } from '../storage'
-import type { MediaUrlCache, PresentationStore } from '../storage'
+import type { MediaUrlCache, PresentationStore, SnapshotInfo } from '../storage'
 import type { Env } from './env'
 import { processPastedMedia } from './imageProcessor'
 import type { ProcessHandle, ProcessedMedia } from './imageProcessor'
@@ -41,6 +42,8 @@ const TYPING_GAP_MS = 1000
 const AUTOSAVE_PAUSE_MS = 1000
 const AUTOSAVE_MAX_MS = 5000
 const POLL_MS = 1000
+/** Draft / history key of a deck that has no store yet. */
+const UNTITLED_KEY = 'untitled'
 
 export interface AppState {
   ready: boolean
@@ -76,6 +79,11 @@ export interface AppState {
   dropActive: boolean
   /** A save is in flight or scheduled. */
   saving: boolean
+  /**
+   * An unsaved draft from a previous session (crash/reload) for the open deck, waiting for
+   * `recoverDraft()` or `discardDraft()`. While set, new drafts are not written (the old one is kept).
+   */
+  pendingRecovery: PendingRecovery | null
 
   init(): Promise<void>
   reopen(): Promise<void>
@@ -104,6 +112,16 @@ export interface AppState {
   cancelPaste(): void
   undo(): void
   redo(): void
+
+  // version history and crash recovery
+  /** Flushes, then lists saved versions of the open deck, newest first. */
+  listVersions(): Promise<SnapshotInfo[]>
+  /** Restore a version as an undoable edit (the current text is recorded first). */
+  restoreVersion(id: string): Promise<boolean>
+  /** Apply the pending draft as an undoable edit. */
+  recoverDraft(): Promise<void>
+  /** Drop the pending draft (its versions stay in history). */
+  discardDraft(): Promise<void>
 
   // modes
   setMode(mode: Mode): void
@@ -222,7 +240,7 @@ export function createAppStore(env: Env): AppStore {
     }
 
     const scheduleAutosave = () => {
-      if (!get().store) return
+      if (!get().store && !env.drafts) return
       if (debounce) clearTimeout(debounce)
       debounce = setTimeout(() => void get().flush(), AUTOSAVE_PAUSE_MS)
       if (!deadline) deadline = setTimeout(() => void get().flush(), AUTOSAVE_MAX_MS)
@@ -232,6 +250,49 @@ export function createAppStore(env: Env): AppStore {
       if (flashTimer) clearTimeout(flashTimer)
       set({ status: text, statusFailed: failed })
       if (text) flashTimer = setTimeout(() => set({ status: '', statusFailed: false }), failed ? 10000 : 4000)
+    }
+
+    // ---- version history and drafts -----------------------------------------
+    const untitledHistory = () => env.drafts?.history(UNTITLED_KEY) ?? null
+
+    /** Record `source` as a version (history failures never block editing). */
+    const recordVersion = async (source: string, store = get().store) => {
+      try {
+        if (store) await store.snapshot(source)
+        else await untitledHistory()?.snapshot(source)
+      } catch {
+        /* history is best effort */
+      }
+    }
+
+    /** Persist the unsaved state as a draft, or clear the draft when the deck is clean. */
+    const syncDraft = async () => {
+      const drafts = env.drafts
+      const s = get()
+      if (!drafts || s.pendingRecovery) return
+      const key = s.store?.key ?? UNTITLED_KEY
+      try {
+        if (s.doc.source === s.savedSource) await drafts.clear(key)
+        else await drafts.write(makeDraft(key, s.doc.source, s.savedSource, s.doc.selected, s.doc.anchor, Date.now()))
+      } catch {
+        /* best effort */
+      }
+    }
+
+    /** After loading a deck: offer a leftover unsaved draft from a crash or reload. */
+    const checkRecovery = async () => {
+      const drafts = env.drafts
+      if (!drafts) return
+      const store = get().store
+      try {
+        const draft = await drafts.read(store?.key ?? UNTITLED_KEY)
+        if (!draft || get().store !== store) return
+        const pending = recoveryFor(draft, get().savedSource)
+        if (pending) set({ pendingRecovery: pending })
+        else await drafts.clear(draft.key)
+      } catch {
+        /* best effort */
+      }
     }
 
     const startPolling = () => {
@@ -264,7 +325,11 @@ export function createAppStore(env: Env): AppStore {
       set({
         store, media: createMediaUrlCache(store), mediaRev: get().mediaRev + 1, doc: createState(text),
         savedSource: initialSaved, undoStack: [], redoStack: [], pendingReopen: null, saving: false,
+        pendingRecovery: null,
       })
+      // Like Hype's open-time checkpoint: the text as opened is always a version.
+      if (initialSaved) await recordVersion(initialSaved, store)
+      await checkRecovery()
       if (initialSaved !== text) scheduleAutosave()
       if (label !== undefined) flash(label)
     }
@@ -277,6 +342,7 @@ export function createAppStore(env: Env): AppStore {
       lastTyping = null
       set({
         doc: createState(source), savedSource: source, undoStack: [], redoStack: [],
+        pendingRecovery: null,
         ...(storeNull ? { store: null, media: null, mediaRev: get().mediaRev + 1 } : {}),
       })
     }
@@ -297,7 +363,9 @@ export function createAppStore(env: Env): AppStore {
           { label: 'Discard', value: 'discard', danger: true, primary: true },
         ],
       })
-      return choice === 'discard'
+      if (choice !== 'discard') return false
+      await env.drafts?.clear(UNTITLED_KEY).catch(() => {})
+      return true
     }
 
     const guarded = (fn: (cmd: DocState) => DocState, typing = false) => commit(fn(get().doc), typing)
@@ -326,6 +394,7 @@ export function createAppStore(env: Env): AppStore {
       dropActive: false,
       pasteJob: null,
       saving: false,
+      pendingRecovery: null,
 
       async init() {
         try {
@@ -359,6 +428,7 @@ export function createAppStore(env: Env): AppStore {
           newMemoryDeck()
           flash(`Could not open the last presentation: ${e instanceof Error ? e.message : e}`, true)
         }
+        await checkRecovery()
         set({ ready: true })
         startPolling()
       },
@@ -538,6 +608,62 @@ export function createAppStore(env: Env): AppStore {
         scheduleAutosave()
       },
 
+      // ---- version history and crash recovery -----------------------------
+      async listVersions() {
+        await get().flush()
+        const { store } = get()
+        try {
+          return store ? await store.listSnapshots() : ((await untitledHistory()?.list()) ?? [])
+        } catch {
+          return []
+        }
+      },
+
+      async restoreVersion(id) {
+        const { store } = get()
+        try {
+          await get().flush()
+          // The current text stays in history, so a restore is never destructive.
+          await recordVersion(get().doc.source)
+          const parsed = parseSnapshotId(id)
+          const history = untitledHistory()
+          if (!parsed) throw new Error('Version not found')
+          const text = store ? await store.readSnapshot(id) : parsed.source === 'opfs' && history
+            ? await history.read(parsed.file) : null
+          if (text === null) throw new Error('Version not found')
+          if (get().store !== store) return false
+          lastTyping = null
+          commit(restoreVersion(get().doc, text))
+          flash('Restored earlier version')
+          return true
+        } catch (e) {
+          flash(`Could not restore that version: ${e instanceof Error ? e.message : e}`, true)
+          return false
+        }
+      },
+
+      async recoverDraft() {
+        const pending = get().pendingRecovery
+        if (!pending) return
+        const { draft, conflict } = pending
+        set({ pendingRecovery: null })
+        // The draft and (on conflict) the saved copy it replaces both stay in history.
+        if (conflict) await recordVersion(get().savedSource)
+        await recordVersion(draft.source)
+        lastTyping = null
+        commit(select(editSource(get().doc, draft.source), draft.selected))
+        flash(conflict
+          ? 'Recovered your last draft. The saved copy had also changed; it is in Version history.'
+          : 'Recovered your last draft')
+      },
+
+      async discardDraft() {
+        const pending = get().pendingRecovery
+        if (!pending) return
+        set({ pendingRecovery: null })
+        await env.drafts?.clear(pending.draft.key).catch(() => {})
+      },
+
       // ---- modes --------------------------------------------------------
       setMode(mode) {
         set((s) => ({ mode, prevMode: mode === 'overview' ? s.prevMode : mode }))
@@ -620,6 +746,9 @@ export function createAppStore(env: Env): AppStore {
         clearTimers()
         saveChain = saveChain.then(async () => {
           const { store, doc } = get()
+          // Version and draft first: they survive even if the write below fails or the tab dies.
+          if (doc.source !== get().savedSource) await recordVersion(doc.source, store)
+          await syncDraft()
           if (!store || doc.source === get().savedSource) return
           const source = doc.source
           set({ saving: true })
@@ -632,6 +761,7 @@ export function createAppStore(env: Env): AppStore {
           } finally {
             set({ saving: false })
           }
+          await syncDraft()
           if (get().doc.source !== get().savedSource && get().store === store) scheduleAutosave()
         })
         return saveChain
@@ -690,6 +820,8 @@ export function createAppStore(env: Env): AppStore {
           if (handle) void env.remember(handle)
           lastModified = await store.markdownModified().catch(() => 0)
           set({ store, media: createMediaUrlCache(store), mediaRev: get().mediaRev + 1, savedSource: source, doc })
+          if (!old) await env.drafts?.clear(UNTITLED_KEY).catch(() => {})
+          await recordVersion(source, store)
           flash(`Saved to ${store.name}`)
         } catch (e) {
           flash(`Could not save: ${e instanceof Error ? e.message : e}`, true)
