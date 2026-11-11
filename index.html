@@ -17,8 +17,29 @@
       } catch (e) {}
     </script>
     <title>HypeSlides</title>
+    <meta name="description" content="Simple Markdown presentations with a visual slide editor, in your browser. Your presentation is a Markdown file with its media alongside it." />
+    <link rel="canonical" href="https://hypeslides.app/" />
+
+    <!-- Share previews. Crawlers don't run JS, so these must be static, with absolute URLs. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="HypeSlides" />
+    <meta property="og:title" content="HypeSlides — Markdown presentations in your browser" />
+    <meta property="og:description" content="Simple Markdown presentations with a visual slide editor, in your browser. Your presentation is a Markdown file with its media alongside it." />
+    <meta property="og:url" content="https://hypeslides.app/" />
+    <meta property="og:image" content="https://hypeslides.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The HypeSlides editor: a slide list, a rendered slide, and its Markdown source." />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
+    <noscript>
+      <h1>HypeSlides</h1>
+      <p>Simple Markdown presentations with a visual slide editor, in your browser.</p>
+      <p>Your presentation is a Markdown file with its media alongside it. Choose a theme, pick a font, and present. Compatible with <a href="https://github.com/omacom/hype/">Omacom Hype</a>.</p>
+      <p>HypeSlides runs entirely in your browser and needs JavaScript. Please enable it to use the editor.</p>
+      <p><a href="https://github.com/mkasberg/hypeslides">Source on GitHub</a></p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
