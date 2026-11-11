@@ -5,7 +5,7 @@ import {
 import { parseMedia } from '../core'
 import type { SlideMedia } from '../core'
 import { highlightCode, onHighlighterChange } from './highlight'
-import { BAND_AREA, DEFAULT_AREA, FULL, horizontal, inkFor, mediaRect, parseColor, sanitizeSvg, scalableSvg,
+import { BAND_AREA, DEFAULT_AREA, FULL, horizontal, inkFor, lineHeightEm, mediaRect, parseColor, sanitizeSvg, scalableSvg,
   slideProperty, textMode, vertical, type Rect } from './layout'
 import { renderSlideHtml, withoutComments } from './markdown'
 import { mediaInfo, type MediaInfo } from './mediaInfo'
@@ -27,12 +27,12 @@ const CSS = `
 .hs-abs{position:absolute}
 .hs-media{position:absolute;display:block;max-width:none}
 .hs-text{position:absolute;display:flex;flex-direction:column}
-.hs-body{display:flow-root;margin-block:auto;width:100%;line-height:1.15;overflow-wrap:anywhere;color:var(--foreground)}
+.hs-body{display:flow-root;margin-block:auto;width:100%;line-height:var(--lh);overflow-wrap:anywhere;color:var(--foreground)}
 .hs-body.center{text-align:center}
-.hs-body.code{font-family:${MONO};line-height:1.2;overflow-wrap:normal}
+.hs-body.code{font-family:${MONO};line-height:var(--lh-code);overflow-wrap:normal}
 .hs-body.code *{font-family:${MONO}}
 .hs-body p,.hs-body ul,.hs-body ol,.hs-body blockquote,.hs-body pre,.hs-body table{margin:0 0 .22em}
-.hs-body h1,.hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{margin:.15em 0 .22em;font-weight:700;line-height:1.15}
+.hs-body h1,.hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{margin:.15em 0 .22em;font-weight:700;line-height:var(--lh)}
 .hs-body h1{font-size:1.8em}
 .hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{font-size:1.25em}
 .hs-body strong{color:var(--accent);font-weight:700}
@@ -305,6 +305,8 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
     '--dark-foreground': pal.dark_foreground,
     '--dark_foreground': pal.dark_foreground,
     '--font': fontStack(font),
+    '--lh': lineHeightEm(font, 1.15),
+    '--lh-code': lineHeightEm('JetBrains Mono', 1.2),
     background: fill,
     visibility: scale ? 'visible' : 'hidden',
     transform: `scale(${scale || 1})`,
