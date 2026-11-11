@@ -6,6 +6,11 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   base: './',
   plugins: [react()],
+  resolve: {
+    // lang-markdown imports lang-html (and with it the HTML/CSS/JS grammars) just to
+    // style inline HTML; swap in a tiny tokenizer. See src/ui/langHtmlLite.ts.
+    alias: { '@codemirror/lang-html': resolve(import.meta.dirname, 'src/ui/langHtmlLite.ts') },
+  },
   build: {
     rollupOptions: {
       // The render harness (parity suite, future exports) is a second page.

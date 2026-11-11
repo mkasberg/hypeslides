@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { EditorState } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, drawSelection, highlightActiveLine, keymap, lineNumbers, placeholder } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
-import { markdown } from '@codemirror/lang-markdown'
+import { markdownLanguage } from './markdownLanguage'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import { editorBridge } from '../app/editorBridge'
@@ -33,6 +33,7 @@ const highlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--ui-syntax-heading)', fontWeight: '700' },
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
+  { tag: t.strikethrough, textDecoration: 'line-through' },
   { tag: t.link, color: 'var(--ui-syntax-link)' },
   { tag: t.url, color: 'var(--ui-syntax-link)' },
   { tag: t.monospace, color: 'var(--ui-syntax-code)' },
@@ -85,7 +86,7 @@ export function CodeEditor(props: CodeEditorProps) {
   useEffect(() => {
     const extensions = [
       theme,
-      markdown(),
+      markdownLanguage(),
       syntaxHighlighting(highlight),
       drawSelection(),
       highlightActiveLine(),
