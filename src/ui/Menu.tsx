@@ -23,12 +23,14 @@ interface PanelProps {
   x: number
   y: number
   alignRight?: boolean
+  /** Submenus: if the panel overflows the right edge at `x`, put its right edge here instead (flip to the parent's left side). */
+  flipX?: number
   onClose: () => void
   /** Pointer events outside these elements close the menu. */
   ignore?: React.RefObject<HTMLElement | null>
 }
 
-function Panel({ items, x, y, alignRight, onClose, ignore }: PanelProps) {
+function Panel({ items, x, y, alignRight, flipX, onClose, ignore }: PanelProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
 
@@ -38,10 +40,11 @@ function Panel({ items, x, y, alignRight, onClose, ignore }: PanelProps) {
     const r = el.getBoundingClientRect()
     let left = alignRight ? x - r.width : x
     let top = y
+    if (flipX !== undefined && left + r.width > window.innerWidth - 8) left = flipX - r.width
     if (left + r.width > window.innerWidth - 8) left = window.innerWidth - r.width - 8
     if (top + r.height > window.innerHeight - 8) top = Math.max(8, window.innerHeight - r.height - 8)
     setPos({ left: Math.max(8, left), top })
-  }, [x, y, alignRight, items])
+  }, [x, y, alignRight, flipX, items])
 
   useEffect(() => {
     const down = (e: PointerEvent) => {
@@ -136,7 +139,7 @@ function MenuRow({ item, hasSub, open, onHover, onActivate, onClose }: {
         {hasSub && <span className="menu-arrow"><ChevronIcon /></span>}
       </button>
       {hasSub && open && rect && !item.disabled && (
-        <Panel items={item.items!} x={rect.right - 2} y={rect.top - 5} onClose={onClose} />
+        <Panel items={item.items!} x={rect.right - 2} flipX={rect.left + 2} y={rect.top - 5} onClose={onClose} />
       )}
     </>
   )
