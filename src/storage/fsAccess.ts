@@ -26,6 +26,9 @@ export class FsAccessStore extends HandleStore {
   }
 
   override get key(): string {
+    // Directory handles have no path, so two different folders with the same folder name and
+    // markdown name share one history/draft. Accepted trade-off (the recovery prompt shows a
+    // timestamp and Version history lists every version, so nothing is lost or silently applied).
     return `fs-${hash16(`${this.root.name}/${this.markdownName}`)}`
   }
 
