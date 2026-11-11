@@ -5,8 +5,8 @@ import {
 import { parseMedia } from '../core'
 import type { SlideMedia } from '../core'
 import { highlightCode, onHighlighterChange } from './highlight'
-import { BAND_AREA, DEFAULT_AREA, FULL, horizontal, inkFor, lineHeightEm, mediaRect, parseColor, sanitizeSvg, scalableSvg,
-  slideProperty, textMode, vertical, type Rect } from './layout'
+import { BAND_AREA, DEFAULT_AREA, FULL, horizontal, inkFor, halfLeadingEm, lineHeightEm, mediaRect, parseColor, sanitizeSvg, scalableSvg,
+  slideProperty, tableColumnWidths, textMode, vertical, type Rect } from './layout'
 import { renderSlideHtml, withoutComments } from './markdown'
 import { mediaInfo, type MediaInfo } from './mediaInfo'
 import { SLIDE_HEIGHT, SLIDE_WIDTH, type SlideViewProps } from './types'
@@ -22,14 +22,14 @@ function fontStack(font: string): string {
 
 const CSS = `
 .hs-outer{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;contain:layout paint style}
-.hs-slide{position:absolute;left:0;top:0;width:${SLIDE_WIDTH}px;height:${SLIDE_HEIGHT}px;transform-origin:0 0;overflow:hidden;color:var(--foreground);font-family:var(--font);-webkit-font-smoothing:antialiased}
+.hs-slide{position:absolute;left:0;top:0;width:${SLIDE_WIDTH}px;height:${SLIDE_HEIGHT}px;transform-origin:0 0;overflow:hidden;color:var(--foreground);font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
 .hs-slide *{box-sizing:border-box}
 .hs-abs{position:absolute}
 .hs-media{position:absolute;display:block;max-width:none}
 .hs-text{position:absolute;display:flex;flex-direction:column}
 .hs-body{display:flow-root;margin-block:auto;width:100%;line-height:var(--lh);overflow-wrap:anywhere;color:var(--foreground)}
 .hs-body.center{text-align:center}
-.hs-body.code{font-family:${MONO};line-height:var(--lh-code);overflow-wrap:normal}
+.hs-body.code{--half:var(--half-code);font-family:${MONO};line-height:var(--lh-code);overflow-wrap:normal;white-space:nowrap}
 .hs-body.code *{font-family:${MONO}}
 .hs-body p,.hs-body ul,.hs-body ol,.hs-body blockquote,.hs-body pre,.hs-body table{margin:0 0 .22em}
 /* Hype sizes headings at 2, 1.5, 1.2, 1, .8, .7 x the body size (Qt FontSizeAdjustment), but sets
@@ -41,6 +41,7 @@ const CSS = `
 .hs-body h4{font-size:1.0em;margin:0.1500em 0 0.2200em}
 .hs-body h5{font-size:0.8em;margin:0.1875em 0 0.2750em}
 .hs-body h6{font-size:0.7em;margin:0.2143em 0 0.3143em}
+.hs-body :is(h1,h2,h3,h4,h5,h6){position:relative;top:calc(var(--half) * -1)}
 .hs-body strong{color:var(--accent);font-weight:700}
 .hs-body h1 strong,.hs-body h2 strong,.hs-body h3 strong,.hs-body h4 strong{color:inherit}
 .hs-body a{color:var(--accent);text-decoration:none}
@@ -106,28 +107,73 @@ const subscribeHighlight = (fn: () => void) => onHighlighterChange(fn)
 
 // ---- text fitting -------------------------------------------------------------
 
+/**
+ * Qt's proportional line height (115% / 120%) adds its extra leading to every line but the last,
+ * so the document height Hype fits against is shorter than ours by one line's extra
+ * (verified against the parity suite).
+ */
+function slack(el: HTMLElement, scale: number): number {
+  let node: Element = el
+  while (node.lastElementChild && node.lastElementChild.tagName !== 'TABLE') node = node.lastElementChild
+  const lh = parseFloat(getComputedStyle(node).lineHeight)
+  return Number.isFinite(lh) ? lh * (1 - 1 / scale) : 0
+}
+
+/**
+ * Qt sizes table columns to their content and, when that is wider than the slide, wraps only the
+ * wide columns: columns whose content fits an equal share keep it, the rest split what is left.
+ * Browser auto layout shrinks every column in proportion instead, so set the widths ourselves.
+ */
+function layoutTables(el: HTMLElement, width: number) {
+  for (const table of el.querySelectorAll('table')) {
+    const cells = Array.from(table.rows[0]?.cells ?? [])
+    if (!cells.length) continue
+    const reset = () => {
+      table.style.tableLayout = ''
+      table.style.width = ''
+      cells.forEach((c) => (c.style.width = ''))
+    }
+    reset()
+    table.style.whiteSpace = 'nowrap'
+    const max = cells.map((c) => c.offsetWidth + 1)
+    table.style.whiteSpace = ''
+    if (max.reduce((a, b) => a + b, 0) <= width) continue
+    table.style.width = '1px'
+    const min = cells.map((c) => c.offsetWidth + 1)
+    table.style.width = ''
+    const widths = tableColumnWidths(min, max, width)
+    table.style.tableLayout = 'fixed'
+    table.style.width = widths.reduce((a, b) => a + b, 0) + 'px'
+    cells.forEach((c, i) => (c.style.width = widths[i] + 'px'))
+  }
+}
+
 const fitCache = new Map<string, number>()
 const FIT_CACHE_MAX = 4096
 
-function fitText(el: HTMLElement, area: Rect, high: number, key: string) {
+function fitText(el: HTMLElement, area: Rect, high: number, key: string, scale: number) {
+  const setSize = (size: number) => {
+    el.style.fontSize = Math.round(size) + 'px'
+    layoutTables(el, area.w)
+  }
   const cached = fitCache.get(key)
   if (cached !== undefined) {
-    el.style.fontSize = cached + 'px'
+    setSize(cached)
     return
   }
-  const fits = () => el.scrollHeight <= area.h && el.scrollWidth <= area.w + 1
+  const fits = () => el.scrollHeight - slack(el, scale) <= area.h && el.scrollWidth <= area.w + 1
   let low = 8
   let size = high
-  el.style.fontSize = size + 'px'
+  setSize(size)
   if (fits()) low = high
   else {
     for (let i = 0; i < 9; i++) {
       size = (low + high) / 2
-      el.style.fontSize = size + 'px'
+      setSize(size)
       if (fits()) low = size
       else high = size
     }
-    el.style.fontSize = low + 'px'
+    setSize(low)
   }
   if (fitCache.size >= FIT_CACHE_MAX) fitCache.clear()
   fitCache.set(key, low)
@@ -274,9 +320,9 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   const fitKey = `${tm.high} ${area.w} ${area.h} ${tm.centered} ${tm.code} ${font}\n${text}`
   useLayoutEffect(() => {
     const el = bodyRef.current
-    if (el && text) fitText(el, area, tm.high, fitKey)
+    if (el && text) fitText(el, area, tm.high, fitKey, tm.code ? 1.2 : 1.15)
     // Fonts finishing loading change metrics, hence epoch.
-  }, [fitKey, epoch, text, area, tm.high])
+  }, [fitKey, epoch, text, area, tm.high, tm.code])
 
   // ---- video playback (present mode) ----
   const lastToggle = useRef(playToggle ?? 0)
@@ -312,7 +358,9 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
     '--dark_foreground': pal.dark_foreground,
     '--font': fontStack(font),
     '--lh': lineHeightEm(font, 1.15),
+    '--half': halfLeadingEm(font, 1.15),
     '--lh-code': lineHeightEm('JetBrains Mono', 1.2),
+    '--half-code': halfLeadingEm('JetBrains Mono', 1.2),
     background: fill,
     visibility: scale ? 'visible' : 'hidden',
     transform: `scale(${scale || 1})`,

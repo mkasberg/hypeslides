@@ -81,8 +81,6 @@ suites are what catch regressions.
 - [ ] **Polish:**
   - Stronger editor selection color on Tokyo Night.
   - "Rosé Pine" display name.
-  - Wide tables shrink text instead of wrapping cells (confirm against the
-    parity suite).
   - Smaller bundle: drop the HTML/JS/CSS parsers that
     `@codemirror/lang-markdown` pulls in by default.
   - Local Font Access API on Chromium for installed fonts.

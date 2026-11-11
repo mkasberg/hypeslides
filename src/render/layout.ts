@@ -150,3 +150,38 @@ export function lineHeightEm(font: string, scale: number): string {
   const natural = NATURAL_LINE_HEIGHT[name] ?? (/mono|code|courier|consol/.test(name) ? 1.3 : 1.2)
   return String(+(natural * scale).toFixed(4))
 }
+
+/**
+ * Qt adds a proportional line height's extra leading below each line, so glyphs sit at the top of
+ * their line box; CSS splits it above and below. This is half of that extra (in em), the amount to
+ * shift a block up by to match Qt.
+ */
+export function halfLeadingEm(font: string, scale: number): string {
+  return `${+((Number(lineHeightEm(font, 1)) * (scale - 1)) / 2).toFixed(4)}em`
+}
+
+/**
+ * Column widths for a table wider than `available`, like Qt's table layout: a column whose
+ * max-content width fits an equal share of what is left keeps that width; the rest split the
+ * remainder equally, but never below their min-content width.
+ */
+export function tableColumnWidths(min: number[], max: number[], available: number): number[] {
+  const widths = max.map((w, i) => Math.max(w, min[i]))
+  if (widths.reduce((a, b) => a + b, 0) <= available) return widths
+  const open = new Set(widths.keys())
+  let remaining = available
+  for (let changed = true; changed && open.size; ) {
+    changed = false
+    const share = remaining / open.size
+    for (const i of [...open]) {
+      if (widths[i] <= share) {
+        remaining -= widths[i]
+        open.delete(i)
+        changed = true
+      }
+    }
+  }
+  const share = remaining / open.size
+  for (const i of open) widths[i] = Math.max(min[i], Math.floor(share))
+  return widths
+}
