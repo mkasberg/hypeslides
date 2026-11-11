@@ -194,3 +194,29 @@ test('duplicates and deletes slides from the sidebar', async ({ openOpfs }) => {
   await page.keyboard.press('Delete')
   await expect(slides(page)).toHaveCount(1)
 })
+
+test('shows problems on the slide banner and the status line', async ({ openOpfs }) => {
+  const page = await openOpfs()
+  const problems = page.getByTestId('problems')
+  await expect(problems).toBeHidden()
+
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  await typeInEditor(page, 'Presentation Markdown', '# One\n\n---\n\n![](gone.png)\n\n# Two\n\n---\n\n# Three\n')
+  await expect(slides(page)).toHaveCount(3)
+  await expect(problems).toContainText('1 problem')
+  await expect(problems).toContainText('Slide 2: Missing media: gone.png')
+  // The slide's own thumbnail carries Hype's banner.
+  await expect(slides(page).nth(1).locator('.hs-problem')).toHaveText('Missing media: gone.png')
+  await expect(slides(page).nth(0).locator('.hs-problem')).toHaveCount(0)
+  await problems.click()
+  await expect(slides(page).nth(1)).toHaveAttribute('aria-selected', 'true')
+
+  // An unfinished code fence is reported for the whole presentation.
+  await typeInEditor(page, 'Presentation Markdown', '# One\n\n---\n\n```ts\nconst a = 1\n')
+  await expect(problems).toContainText('Unclosed code fence')
+
+  // Text that must shrink below 24px is a warning, found by laying the slide out.
+  const crowded = Array.from({ length: 70 }, (_, i) => `- point number ${i}`).join('\n')
+  await typeInEditor(page, 'Presentation Markdown', `# One\n\n---\n\n${crowded}\n`)
+  await expect(problems).toContainText('Slide 2: Text fits below 24px on a 1080p slide')
+})

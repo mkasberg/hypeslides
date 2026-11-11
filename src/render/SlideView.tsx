@@ -2,182 +2,16 @@ import {
   useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
   type CSSProperties,
 } from 'react'
-import { parseMedia } from '../core'
+import { parseMedia, slideProblems } from '../core'
 import type { SlideMedia } from '../core'
-import { highlightCode, onHighlighterChange } from './highlight'
-import { BAND_AREA, DEFAULT_AREA, FULL, horizontal, inkFor, halfLeadingEm, lineHeightEm, mediaRect, parseColor, sanitizeSvg, scalableSvg,
-  slideProperty, tableColumnWidths, textMode, vertical, type Rect } from './layout'
-import { renderSlideHtml, withoutComments } from './markdown'
+import { highlightCode } from './highlight'
+import { fitKeyFor, fitText, fontEpoch, highlightVersion, subscribeFonts, subscribeHighlight, watchFonts } from './fit'
+import { ensureStyles, fontStack } from './styles'
+import { FULL, halfLeadingEm, horizontal, inkFor, lineHeightEm, mediaRect, parseColor, sanitizeSvg, scalableSvg,
+  slideProperty, slideTextLayout, vertical, type Rect } from './layout'
+import { renderSlideHtml } from './markdown'
 import { mediaInfo, type MediaInfo } from './mediaInfo'
-import { SLIDE_HEIGHT, SLIDE_WIDTH, type SlideViewProps } from './types'
-
-const MONO = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace"
-
-function fontStack(font: string): string {
-  const name = font.replace(/["'\\]/g, '').trim()
-  if (!name) return MONO
-  const mono = /mono|code|courier|consol/i.test(name)
-  return `'${name}', ` + (mono ? MONO : "system-ui, -apple-system, 'Segoe UI', sans-serif")
-}
-
-const CSS = `
-.hs-outer{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;contain:layout paint style}
-.hs-slide{position:absolute;left:0;top:0;width:${SLIDE_WIDTH}px;height:${SLIDE_HEIGHT}px;transform-origin:0 0;overflow:hidden;color:var(--foreground);font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
-.hs-slide *{box-sizing:border-box}
-.hs-abs{position:absolute}
-.hs-media{position:absolute;display:block;max-width:none}
-.hs-text{position:absolute;display:flex;flex-direction:column}
-.hs-body{display:flow-root;margin-block:auto;width:100%;line-height:var(--lh);overflow-wrap:anywhere;color:var(--foreground)}
-.hs-body.center{text-align:center}
-.hs-body.code{--half:var(--half-code);font-family:${MONO};line-height:var(--lh-code);overflow-wrap:normal;white-space:nowrap}
-.hs-body.code *{font-family:${MONO}}
-.hs-body p,.hs-body ul,.hs-body ol,.hs-body blockquote,.hs-body pre,.hs-body table{margin:0 0 .22em}
-/* Hype sizes headings at 2, 1.5, 1.2, 1, .8, .7 x the body size (Qt FontSizeAdjustment), but sets
-   their margins from the body size, so each margin is divided by the heading's own factor. */
-.hs-body h1,.hs-body h2,.hs-body h3,.hs-body h4,.hs-body h5,.hs-body h6{font-weight:700;line-height:var(--lh)}
-.hs-body h1{font-size:2.0em;margin:0.0750em 0 0.1100em}
-.hs-body h2{font-size:1.5em;margin:0.1000em 0 0.1467em}
-.hs-body h3{font-size:1.2em;margin:0.1250em 0 0.1833em}
-.hs-body h4{font-size:1.0em;margin:0.1500em 0 0.2200em}
-.hs-body h5{font-size:0.8em;margin:0.1875em 0 0.2750em}
-.hs-body h6{font-size:0.7em;margin:0.2143em 0 0.3143em}
-.hs-body :is(h1,h2,h3,h4,h5,h6){position:relative;top:calc(var(--half) * -1)}
-.hs-body strong{color:var(--accent);font-weight:700}
-.hs-body h1 strong,.hs-body h2 strong,.hs-body h3 strong,.hs-body h4 strong{color:inherit}
-.hs-body a{color:var(--accent);text-decoration:none}
-.hs-body u{text-decoration:underline}
-.hs-body p.attribution{font-size:.7em}
-.hs-body ul,.hs-body ol{padding-left:1.4em;text-align:left}
-.hs-body li{margin:0 0 .22em}
-.hs-body li>p{margin:0}
-.hs-body li>ul,.hs-body li>ol{margin:.22em 0 0}
-.hs-body blockquote{padding-left:40px;text-align:left}
-.hs-body blockquote>:last-child{margin-bottom:0}
-.hs-body code{font-family:${MONO}}
-.hs-body pre{white-space:pre;tab-size:4;margin:0;text-align:left}
-.hs-body pre code{display:block}
-.hs-body table{border-collapse:collapse;width:auto;margin-bottom:.22em;overflow-wrap:normal}
-.hs-body.center table{margin-inline:auto}
-.hs-body th,.hs-body td{padding:.25em;vertical-align:top;border-bottom:.03em solid color-mix(in srgb,var(--foreground) 20%,transparent);text-align:left}
-.hs-body th{font-weight:700;color:var(--accent);border-bottom:.06em solid var(--accent)}
-.hs-body tr:last-child td{border-bottom:0}
-.hs-body th:not(:first-child),.hs-body td:not(:first-child){padding-left:.8em}
-.hs-body th:not(:last-child),.hs-body td:not(:last-child){padding-right:.8em}
-.hs-svg{position:absolute;display:flex;align-items:center;justify-content:center;fill:var(--foreground);color:var(--foreground);font-family:var(--font)}
-.hs-svg svg{width:100%;height:100%;display:block}
-.hs-missing{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;color:var(--accent);font:32px system-ui,sans-serif;overflow:hidden;padding:8px;word-break:break-all}
-.hs-undecodable{position:absolute;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center;text-align:center;background:#111;color:#fff;font:36px system-ui,sans-serif;overflow:hidden;padding:40px;word-break:break-word}
-.hs-undecodable small{font-size:26px;opacity:.7}
-.hs-play{position:absolute;width:150px;height:150px;border-radius:50%;border:8px solid rgba(255,255,255,.9);background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
-.hs-play::after{content:'';margin-left:14px;border-left:50px solid rgba(255,255,255,.95);border-top:30px solid transparent;border-bottom:30px solid transparent}
-.hs-problem{position:absolute;left:0;right:0;bottom:0;height:80px;background:#9b3030;color:#fff;font:21px system-ui,sans-serif;display:flex;align-items:center;padding:0 30px}
-`
-
-let styled = false
-function ensureStyles() {
-  if (styled || typeof document === 'undefined') return
-  styled = true
-  const el = document.createElement('style')
-  el.setAttribute('data-hype-slide', '')
-  el.textContent = CSS
-  document.head.appendChild(el)
-}
-
-// ---- external stores: highlighter readiness and font loading -----------------
-
-let fontEpoch = 0
-const fontListeners = new Set<() => void>()
-let watchingFonts = false
-function watchFonts() {
-  if (watchingFonts || typeof document === 'undefined' || !document.fonts) return
-  watchingFonts = true
-  document.fonts.addEventListener('loadingdone', () => {
-    fontEpoch++
-    fitCache.clear()
-    fontListeners.forEach((fn) => fn())
-  })
-}
-const subscribeFonts = (fn: () => void) => {
-  fontListeners.add(fn)
-  return () => void fontListeners.delete(fn)
-}
-let highlightVersion = 0
-onHighlighterChange(() => highlightVersion++)
-const subscribeHighlight = (fn: () => void) => onHighlighterChange(fn)
-
-// ---- text fitting -------------------------------------------------------------
-
-/**
- * Qt's proportional line height (115% / 120%) adds its extra leading to every line but the last,
- * so the document height Hype fits against is shorter than ours by one line's extra
- * (verified against the parity suite).
- */
-function slack(el: HTMLElement, scale: number): number {
-  let node: Element = el
-  while (node.lastElementChild && node.lastElementChild.tagName !== 'TABLE') node = node.lastElementChild
-  const lh = parseFloat(getComputedStyle(node).lineHeight)
-  return Number.isFinite(lh) ? lh * (1 - 1 / scale) : 0
-}
-
-/**
- * Qt sizes table columns to their content and, when that is wider than the slide, wraps only the
- * wide columns: columns whose content fits an equal share keep it, the rest split what is left.
- * Browser auto layout shrinks every column in proportion instead, so set the widths ourselves.
- */
-function layoutTables(el: HTMLElement, width: number) {
-  for (const table of el.querySelectorAll('table')) {
-    const cells = Array.from(table.rows[0]?.cells ?? [])
-    if (!cells.length) continue
-    const reset = () => {
-      table.style.tableLayout = ''
-      table.style.width = ''
-      cells.forEach((c) => (c.style.width = ''))
-    }
-    reset()
-    table.style.whiteSpace = 'nowrap'
-    const max = cells.map((c) => c.offsetWidth + 1)
-    table.style.whiteSpace = ''
-    if (max.reduce((a, b) => a + b, 0) <= width) continue
-    table.style.width = '1px'
-    const min = cells.map((c) => c.offsetWidth + 1)
-    table.style.width = ''
-    const widths = tableColumnWidths(min, max, width)
-    table.style.tableLayout = 'fixed'
-    table.style.width = widths.reduce((a, b) => a + b, 0) + 'px'
-    cells.forEach((c, i) => (c.style.width = widths[i] + 'px'))
-  }
-}
-
-const fitCache = new Map<string, number>()
-const FIT_CACHE_MAX = 4096
-
-function fitText(el: HTMLElement, area: Rect, high: number, key: string, scale: number) {
-  const setSize = (size: number) => {
-    el.style.fontSize = Math.round(size) + 'px'
-    layoutTables(el, area.w)
-  }
-  const cached = fitCache.get(key)
-  if (cached !== undefined) {
-    setSize(cached)
-    return
-  }
-  const fits = () => el.scrollHeight - slack(el, scale) <= area.h && el.scrollWidth <= area.w + 1
-  let low = 8
-  let size = high
-  setSize(size)
-  if (fits()) low = high
-  else {
-    for (let i = 0; i < 9; i++) {
-      size = (low + high) / 2
-      setSize(size)
-      if (fits()) low = size
-      else high = size
-    }
-    setSize(low)
-  }
-  if (fitCache.size >= FIT_CACHE_MAX) fitCache.clear()
-  fitCache.set(key, low)
-}
+import { SLIDE_WIDTH, type SlideViewProps } from './types'
 
 // ---- media resolution ---------------------------------------------------------
 
@@ -261,7 +95,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
 
   const bgProp = slideProperty(source, 'background')
   const fgProp = slideProperty(source, 'foreground')
-  const text = (media ? media.text : withoutComments(source)).trim()
+  const { text, area, tm, overlaid } = useMemo(() => slideTextLayout(source, media), [source, media])
   const hasFile = !!media?.file
   const isVideo = !!media?.video
   const placed = !!media?.position
@@ -297,19 +131,13 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
       }
     }
   }
-  const overlaid = hasFile && !placed && (!isVideo || span)
   if (overlaid && !fgExplicit && text) pal.foreground = '#ffffff'
 
   // ---- areas ----
-  let area = DEFAULT_AREA
   const svgOnly = media?.svg !== undefined && !hasFile
   const svgRect: Rect = text === '' ? { x: 70, y: 50, w: 1780, h: 980 } : { x: 100, y: 280, w: 1720, h: 730 }
-  if (svgOnly && text) area = BAND_AREA
-  if (hasFile && !placed && isVideo && !span && text) area = BAND_AREA
-  if (hasFile && !placed && !overlaid && text) area = BAND_AREA
 
   const mrect = media && hasFile ? mediaRect(media) : FULL
-  const tm = textMode(text, slideProperty(source, 'alignment'), isVideo && !span)
 
   const html = useMemo(
     () => (text ? renderSlideHtml(text, { highlight: highlightCode }) : ''),
@@ -317,7 +145,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [text, hlVersion],
   )
-  const fitKey = `${tm.high} ${area.w} ${area.h} ${tm.centered} ${tm.code} ${font}\n${text}`
+  const fitKey = fitKeyFor(text, area, tm.high, tm.centered, tm.code, font)
   useLayoutEffect(() => {
     const el = bodyRef.current
     if (el && text) fitText(el, area, tm.high, fitKey, tm.code ? 1.2 : 1.15)
@@ -369,6 +197,16 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   const svgHtml = useMemo(
     () => (svgOnly && media?.svg ? scalableSvg(sanitizeSvg(media.svg)) : ''),
     [svgOnly, media?.svg],
+  )
+
+  // Hype paints a banner of the slide's errors across the bottom, joined by " · ".
+  // A file counts as missing only once resolution has finished (null, not undefined).
+  const banner = useMemo(
+    () =>
+      slideProblems(source, {
+        mediaExists: (name) => (name === media?.file ? fileUrl !== null : name === media?.poster ? posterUrl !== null : true),
+      }).map((p) => p.message).join(' · '),
+    [source, media, fileUrl, posterUrl],
   )
 
   const softened = hasFile && !isVideo && !placed && !!text
@@ -472,7 +310,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             />
           </div>
         )}
-        {media?.error && mode !== 'present' && <div className="hs-problem">{media.error}</div>}
+        {banner && mode !== 'present' && <div className="hs-problem">{banner}</div>}
       </div>
     </div>
   )

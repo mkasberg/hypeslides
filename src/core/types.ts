@@ -104,10 +104,23 @@ export interface Theme {
   light?: boolean
 }
 
-/** A problem found by `check` (later; also used for live warnings). */
+export type ProblemKind =
+  | 'front-matter' // unfinished front matter
+  | 'fence' // unfinished code fence
+  | 'layout' // invalid media / layout option
+  | 'media' // missing media or poster, or more than one media item
+  | 'svg' // an ```svg block that can't be drawn
+  | 'theme' // theme not installed
+  | 'empty' // empty slide
+  | 'shrink' // text shrinks below a readable size
+
+/** A problem found by `check` (Hype's `Problem` in cli.cpp). */
 export interface Problem {
-  slide: number // 0-based
-  line: number // 1-based line within the document
+  /** 0-based slide index, or null for the presentation as a whole. */
+  slide: number | null
+  /** 1-based line within the document. */
+  line: number
   severity: 'error' | 'warning'
+  kind: ProblemKind
   message: string
 }

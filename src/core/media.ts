@@ -238,6 +238,19 @@ export function parseMedia(slideSource: string): SlideMedia | null {
   return media
 }
 
+/**
+ * How many media items a slide declares: `![](file)` references outside code
+ * and comments plus ```svg fences (counted up to two). Hype allows one.
+ */
+export function mediaItemCount(slideSource: string): number {
+  const text = withoutComments(slideSource)
+  const visible = outsideCode(text)
+  let count = [...visible.matchAll(new RegExp(MEDIA_RE.source, 'g'))].length
+  const first = takeFence(text, 'svg')
+  if (first.body !== undefined) count += 1 + (takeFence(first.text, 'svg').body !== undefined ? 1 : 0)
+  return count
+}
+
 /** True when the media is placed (a logo-style image with position/size). */
 export function isPlaced(media: SlideMedia): boolean {
   return !!media.position

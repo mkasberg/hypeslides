@@ -2,7 +2,7 @@
 // text mode detection, svg theming). No DOM, so they are unit-testable.
 
 import type { MediaPosition, SlideMedia } from '../core'
-import { hasTable } from './markdown'
+import { hasTable, withoutComments } from './markdown'
 
 export interface Rect {
   x: number
@@ -184,4 +184,24 @@ export function tableColumnWidths(min: number[], max: number[], available: numbe
   const share = remaining / open.size
   for (const i of open) widths[i] = Math.max(min[i], Math.floor(share))
   return widths
+}
+
+/**
+ * Where a slide's text goes and how it is laid out, from the slide's Markdown
+ * and parsed media alone (ported from Hype's paintSlide). Shared by <SlideView>
+ * and the offscreen measurement behind `check`'s shrink warning.
+ */
+export function slideTextLayout(source: string, media: SlideMedia | null): { text: string; area: Rect; tm: TextMode; overlaid: boolean } {
+  const text = (media ? media.text : withoutComments(source)).trim()
+  const hasFile = !!media?.file
+  const isVideo = !!media?.video
+  const placed = !!media?.position
+  const span = !!media?.span
+  const overlaid = hasFile && !placed && (!isVideo || span)
+  let area = DEFAULT_AREA
+  const svgOnly = media?.svg !== undefined && !hasFile
+  if (svgOnly && text) area = BAND_AREA
+  if (hasFile && !placed && isVideo && !span && text) area = BAND_AREA
+  if (hasFile && !placed && !overlaid && text) area = BAND_AREA
+  return { text, area, tm: textMode(text, slideProperty(source, 'alignment'), isVideo && !span), overlaid }
 }

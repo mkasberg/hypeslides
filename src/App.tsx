@@ -5,6 +5,7 @@ import { installShortcuts } from './app/shortcuts'
 import { isDirty } from './app/store'
 import { useApp } from './app/useApp'
 import { ConfirmDialog, PasteDialog, ShortcutsOverlay } from './ui/Dialogs'
+import { ProblemsIndicator } from './ui/Problems'
 import { PresentView } from './ui/PresentView'
 import { TopBar, storageLabel } from './ui/TopBar'
 import { MarkdownView, OverviewView, VisualView } from './ui/Views'
@@ -110,6 +111,7 @@ export default function App() {
       </main>
       <footer className="footbar">
         <span className="storage-label">{storageLabel({ store, doc, savedSource, saving })}</span>
+        <ProblemsIndicator />
         <span className="credit">Built with {'\u2665\uFE0E'} by <a href="https://www.mikekasberg.com" target="_blank" rel="noopener">Mike Kasberg</a>. Based on <a href="https://github.com/omacom/hype" target="_blank" rel="noopener">Hype</a> by <a href="https://dhh.dk/" target="_blank" rel="noopener">DHH</a>.</span>
       </footer>
       {presenting && <PresentView />}
