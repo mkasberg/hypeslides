@@ -7,7 +7,7 @@ import { Dropdown } from './Menu'
 import type { MenuItem } from './Menu'
 import { getAppThemePref, previewAppTheme, prettyThemeName, setAppThemePref, subscribeAppTheme } from '../app/appTheme'
 import { Popover, ThemeList, allThemeOptions, systemOption } from './ThemeList'
-import { ChevronIcon, FileIcon, FontIcon, GridIcon, PaletteIcon, PlayIcon } from './icons'
+import { ChevronIcon, FileIcon, FontIcon, GitHubIcon, GridIcon, PaletteIcon, PlayIcon } from './icons'
 
 const FONTS = [
   'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Menlo', 'Consolas', 'Courier New',
@@ -97,6 +97,9 @@ export function TopBar() {
         <div className={'deck-status' + (statusFailed ? ' failed' : '')} aria-live="polite">{status || position}</div>
       </div>
       <div className="top-right">
+        <a className="icon-btn" href="https://github.com/mkasberg/hypeslides" target="_blank" rel="noopener noreferrer" title="HypeSlides on GitHub" aria-label="HypeSlides on GitHub">
+          <GitHubIcon />
+        </a>
         <button type="button" className={'icon-btn' + (mode === 'overview' ? ' active' : '')} title="Overview (Ctrl+M)" aria-pressed={mode === 'overview'} onClick={() => runCommand('view.overview')}>
           <GridIcon />
         </button>
