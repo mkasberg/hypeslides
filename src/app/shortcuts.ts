@@ -72,6 +72,7 @@ export const COMMANDS = {
   'view.source': (s) => withFocusKept(s.toggleSource),
   'view.visual': (s) => withFocusKept(() => s.setMode('visual')),
   'view.markdown': (s) => withFocusKept(() => s.setMode('markdown')),
+  'file.history': (s) => s.setHistoryOpen(true),
   'help.shortcuts': (s) => s.setShortcutsOpen(!s.shortcutsOpen),
   'format.bold': formatCommand('bold'),
   'format.italic': formatCommand('italic'),
@@ -263,7 +264,7 @@ export function installShortcuts(): () => void {
     if (e.defaultPrevented || e.isComposing) return
     const s = useApp.getState()
     const name = keyName(e)
-    const blocked = !!s.dialog || !!document.querySelector('[role=menu]')
+    const blocked = !!s.dialog || s.historyOpen || !!s.pendingRecovery || !!document.querySelector('[role=menu]')
     if (s.shortcutsOpen && !s.presenting) {
       if (name === 'Escape' || name === '?' || name === 'F1') {
         e.preventDefault()

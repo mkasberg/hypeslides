@@ -13,7 +13,8 @@ export function deckSeed(): Record<string, string | { base64: string }> {
 }
 
 export async function openMenu(page: Page, title: 'File menu' | 'Appearance' | 'Font' | 'Presentation theme') {
-  await page.getByTitle(title, { exact: true }).click()
+  // The file menu's title gains "(unsaved changes)" while the deck is dirty.
+  await (title === 'File menu' ? page.getByTitle(/^File menu/) : page.getByTitle(title, { exact: true })).click()
 }
 
 export async function menuItem(page: Page, title: 'File menu', name: string | RegExp) {

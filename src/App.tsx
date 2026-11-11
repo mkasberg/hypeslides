@@ -4,7 +4,7 @@ import { mediaKind } from './storage'
 import { installShortcuts } from './app/shortcuts'
 import { isDirty } from './app/store'
 import { useApp } from './app/useApp'
-import { ConfirmDialog, PasteDialog, ShortcutsOverlay } from './ui/Dialogs'
+import { ConfirmDialog, PasteDialog, RecoveryDialog, ShortcutsOverlay, VersionHistoryDialog } from './ui/Dialogs'
 import { ProblemsIndicator } from './ui/Problems'
 import { PresentView } from './ui/PresentView'
 import { TopBar, storageLabel } from './ui/TopBar'
@@ -59,6 +59,16 @@ function useWindowBehavior() {
       if (!folder && files.length && files.every((f) => mediaKind(f.name))) void s.addMediaFiles(files)
       else void s.importDrop(dt)
     }
+    // Best effort: async OPFS writes are not guaranteed to finish while the page is going away,
+    // but starting them now covers the ~1s typing window when the browser lets them complete.
+    const flushSoon = () => {
+      if (isDirty(useApp.getState())) void useApp.getState().flush()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushSoon()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flushSoon)
     window.addEventListener('beforeunload', beforeUnload)
     window.addEventListener('paste', paste)
     window.addEventListener('dragenter', dragEnter)
@@ -67,6 +77,8 @@ function useWindowBehavior() {
     window.addEventListener('drop', drop)
     return () => {
       unshortcuts()
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flushSoon)
       window.removeEventListener('beforeunload', beforeUnload)
       window.removeEventListener('paste', paste)
       window.removeEventListener('dragenter', dragEnter)
@@ -119,6 +131,8 @@ export default function App() {
       <ConfirmDialog />
       <PasteDialog />
       <ShortcutsOverlay />
+      <VersionHistoryDialog />
+      <RecoveryDialog />
     </div>
   )
 }

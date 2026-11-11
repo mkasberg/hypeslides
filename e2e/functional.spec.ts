@@ -220,3 +220,118 @@ test('shows problems on the slide banner and the status line', async ({ openOpfs
   await typeInEditor(page, 'Presentation Markdown', `# One\n\n---\n\n${crowded}\n`)
   await expect(problems).toContainText('Slide 2: Text fits below 24px on a 1080p slide')
 })
+
+/** Wait until autosave has written the unsaved-draft file for the untitled deck (new deck, no folder yet). */
+async function draftWritten(page: Page, containing: string) {
+  await expect
+    .poll(
+      () => page.evaluate(async (needle) => {
+        try {
+          const root = await navigator.storage.getDirectory()
+          const dir = await (await root.getDirectoryHandle('presentations')).getDirectoryHandle('drafts')
+          const text = await (await (await dir.getFileHandle('untitled.json')).getFile()).text()
+          return text.includes(needle)
+        } catch {
+          return false
+        }
+      }, containing),
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+}
+
+test.describe('crash recovery', () => {
+  test('offers an unsaved draft after a reload, and recovers it (undoably)', async ({ openWithFakeFs }) => {
+    const page = await openWithFakeFs()
+    await typeInEditor(page, 'Slide Markdown', '# Crashed headline\n\nunsaved body')
+    await draftWritten(page, 'Crashed headline')
+
+    await page.reload() // stands in for a crash: the draft was never "saved"
+    const prompt = page.getByRole('alertdialog', { name: 'Recover unsaved changes?' })
+    await expect(prompt).toBeVisible()
+    await expect(prompt).toContainText('Untitled')
+    await expect(page.locator('.preview-box')).not.toContainText('Crashed headline')
+
+    await prompt.getByRole('button', { name: 'Recover' }).click()
+    await expect(prompt).toBeHidden()
+    await expect(page.locator('.preview-box')).toContainText('Crashed headline')
+    await expect(page.locator('.preview-box')).toContainText('unsaved body')
+
+    await page.keyboard.press('Control+Z')
+    await expect(page.locator('.preview-box')).not.toContainText('Crashed headline')
+  })
+
+  test('discarding the draft clears it for good', async ({ openWithFakeFs }) => {
+    const page = await openWithFakeFs()
+    await typeInEditor(page, 'Slide Markdown', '# Throwaway text')
+    await draftWritten(page, 'Throwaway text')
+
+    await page.reload()
+    const prompt = page.getByRole('alertdialog', { name: 'Recover unsaved changes?' })
+    await prompt.getByRole('button', { name: 'Discard' }).click()
+    await expect(prompt).toBeHidden()
+    await expect(page.locator('.preview-box')).not.toContainText('Throwaway text')
+
+    await page.reload()
+    await expect(page.locator('.topbar')).toBeVisible()
+    await expect(prompt).toBeHidden()
+  })
+})
+
+test.describe('version history', () => {
+  test('lists versions after edits and restores one, undoably', async ({ openWithFakeFs }) => {
+    const page = await openWithFakeFs()
+    await typeInEditor(page, 'Slide Markdown', '# Version A')
+    await expect(page.locator('.preview-box')).toContainText('Version A')
+    await draftWritten(page, 'Version A')
+    await typeInEditor(page, 'Slide Markdown', '# Version B')
+    await draftWritten(page, 'Version B')
+
+    await menuItem(page, 'File menu', /Version history/)
+    const dialog = page.getByRole('dialog', { name: 'Version history' })
+    await expect(dialog).toBeVisible()
+    const rows = dialog.getByRole('option')
+    await expect.poll(() => rows.count()).toBeGreaterThanOrEqual(2)
+    await expect(rows.first()).toContainText('Current')
+    await expect(rows.first()).toContainText(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
+
+    // Find the row whose preview holds "Version A".
+    const preview = dialog.getByLabel('Preview of the selected version')
+    const n = await rows.count()
+    for (let i = 0; i < n; i++) {
+      await rows.nth(i).click()
+      await expect(preview).not.toHaveText('Loading…')
+      if ((await preview.textContent())?.includes('Version A')) break
+    }
+    await expect(preview).toContainText('Version A')
+    await dialog.getByRole('button', { name: 'Restore' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.locator('.preview-box')).toContainText('Version A')
+
+    await page.keyboard.press('Control+Z')
+    await expect(page.locator('.preview-box')).toContainText('Version B')
+  })
+
+  test('closes with Escape', async ({ openWithFakeFs }) => {
+    const page = await openWithFakeFs()
+    await menuItem(page, 'File menu', /Version history/)
+    const dialog = page.getByRole('dialog', { name: 'Version history' })
+    await expect(dialog).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+  })
+
+  test('saving twice into a folder writes a .hype-backups/*.bak', async ({ openWithFakeFs }) => {
+    const page = await openWithFakeFs()
+    await typeInEditor(page, 'Slide Markdown', '# First save')
+    await page.keyboard.press('Control+S')
+    await expect(page.locator('.storage-label')).toHaveText(/Saved to disk/)
+    await typeInEditor(page, 'Slide Markdown', '# Second save')
+    const list = () => page.evaluate(() => (window as unknown as { __fakeFs: { list(): string[] } }).__fakeFs.list())
+    await expect
+      .poll(async () => (await list()).filter((p) => /^\.hype-backups\/presentation\.md\..+\.bak$/.test(p)).length, { timeout: 10_000 })
+      .toBeGreaterThan(0)
+    const bak = (await list()).find((p) => p.endsWith('.bak'))!
+    expect(await fakeText(page, bak)).toContain('# First save')
+  })
+})

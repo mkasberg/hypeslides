@@ -57,6 +57,8 @@ export function TopBar() {
     { label: 'Save', shortcut: 'Ctrl+S', onSelect: () => runCommand('file.save') },
     ...(chromium ? [{ label: 'Save as…', shortcut: 'Ctrl+Shift+S', onSelect: () => runCommand('file.saveAs') }] : []),
     { label: store || !chromium ? 'Export (.md / .zip)' : 'Export (.md)', shortcut: 'Ctrl+E', onSelect: () => runCommand('file.export') },
+    { separator: true },
+    { label: 'Version history…', onSelect: () => runCommand('file.history') },
   ]
   const fontItem = (f: string): MenuItem => ({
     label: f, checked: f.toLowerCase() === font.toLowerCase(), labelStyle: { fontFamily: `'${f}', sans-serif` }, onSelect: () => setFont(f),

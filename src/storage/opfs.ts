@@ -98,15 +98,15 @@ export class OpfsStore extends HandleStore {
   ): Promise<OpfsStore> {
     const root = await navigator.storage.getDirectory()
     const base = await root.getDirectoryHandle(BASE, { create: true })
+    // The old working copy is the only copy on these browsers: keep it restorable from
+    // Version history (and any unsaved draft with it) instead of deleting history.
+    await OpfsStore.archiveCurrent()
     try {
       await base.removeEntry(CURRENT, { recursive: true })
     } catch {
       /* none yet */
     }
     const dir = await base.getDirectoryHandle(CURRENT, { create: true })
-    // A replaced working copy is a different deck: its history and draft go too.
-    await new DraftStore(opfsPresentationsDir).clear(OPFS_KEY)
-    await defaultHistory()?.clear()
     const store = new OpfsStore(dir, opts.markdownName ?? 'presentation.md', opts.label ?? 'Untitled', defaultHistory())
     await store.writeMarkdown(markdown)
     return store
@@ -132,6 +132,33 @@ export class OpfsStore extends HandleStore {
       await base.removeEntry(PENDING, { recursive: true })
     } catch {
       /* nothing pending */
+    }
+  }
+
+  /**
+   * Record the current working copy's text (and unsaved draft) in history, then clear the
+   * draft. Best effort; the draft is only cleared once it has been snapshotted.
+   */
+  static async archiveCurrent(
+    dir?: FileSystemDirectoryHandle | null, history?: SnapshotArea | null, drafts?: DraftStore,
+  ): Promise<void> {
+    try {
+      const hist = history === undefined ? defaultHistory() : history
+      const draftStore = drafts ?? new DraftStore(opfsPresentationsDir)
+      if (!hist) return
+      const cur = dir === undefined ? await currentDir(false).catch(() => null) : dir
+      const md = cur ? await HandleStore.findMarkdown(cur) : undefined
+      if (cur && md) {
+        const text = await (await (await cur.getFileHandle(md)).getFile()).text()
+        if (text.trim()) await hist.snapshot(text)
+      }
+      const draft = await draftStore.read(OPFS_KEY)
+      if (draft) {
+        if (draft.source.trim()) await hist.snapshot(draft.source)
+        await draftStore.clear(OPFS_KEY)
+      }
+    } catch {
+      /* history is best effort */
     }
   }
 

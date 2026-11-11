@@ -2,7 +2,7 @@
 // Docker image (npm run test:e2e:update), see tools/playwright-docker.sh.
 import type { Page } from '@playwright/test'
 import { deckSeed, menuItem, openMenu, slides } from './helpers.ts'
-import { expect, test } from './fixtures.ts'
+import { FIXED_TIME, expect, test } from './fixtures.ts'
 
 /** Open the fixture deck from the fake folder and select slide `n` (1-based). */
 async function openDeck(open: (o: { seed: ReturnType<typeof deckSeed> }) => Promise<Page>, n = 2) {
@@ -93,6 +93,36 @@ test.describe('screenshots (dark)', () => {
     await page.keyboard.press('Control+S')
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await shot(page, 'confirm-dialog')
+  })
+
+  test('version history dialog', async ({ openWithFakeFs }) => {
+    const page = await openDeck(openWithFakeFs, 1)
+    await page.clock.setFixedTime(FIXED_TIME) // version timestamps are shown in the dialog
+    await menuItem(page, 'File menu', /Version history/)
+    const dialog = page.getByRole('dialog', { name: 'Version history' })
+    await expect(dialog.getByRole('option').first()).toBeVisible()
+    await dialog.getByRole('option').first().click()
+    await expect(dialog.getByLabel('Preview of the selected version')).toContainText('First')
+    await shot(page, 'version-history-dialog')
+  })
+
+  test('recovery dialog', async ({ openWithFakeFs }) => {
+    const page = await openWithFakeFs()
+    await page.clock.setFixedTime(FIXED_TIME) // the draft's timestamp is shown in the dialog
+    await page.getByRole('textbox', { name: 'Slide Markdown' }).click()
+    await page.keyboard.insertText('# Unsaved work')
+    await expect
+      .poll(() => page.evaluate(async () => {
+        try {
+          const root = await navigator.storage.getDirectory()
+          const dir = await (await root.getDirectoryHandle('presentations')).getDirectoryHandle('drafts')
+          return (await (await (await dir.getFileHandle('untitled.json')).getFile()).text()).includes('Unsaved work')
+        } catch { return false }
+      }), { timeout: 10_000 })
+      .toBe(true)
+    await page.reload()
+    await expect(page.getByRole('alertdialog', { name: 'Recover unsaved changes?' })).toBeVisible()
+    await shot(page, 'recovery-dialog')
   })
 
   test('drop overlay', async ({ openWithFakeFs }) => {

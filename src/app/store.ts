@@ -69,6 +69,8 @@ export interface AppState {
   dialog: DialogSpec | null
   pasteJob: PasteJob | null
   shortcutsOpen: boolean
+  /** The Version history dialog is open. */
+  historyOpen: boolean
   /** Presentation theme being hovered in the picker (not saved); null when none. */
   themePreview: string | null
   /** Items per row in Overview (1 elsewhere); used for arrow-key row steps. */
@@ -116,6 +118,8 @@ export interface AppState {
   // version history and crash recovery
   /** Flushes, then lists saved versions of the open deck, newest first. */
   listVersions(): Promise<SnapshotInfo[]>
+  /** The Markdown text of a version, or null if it cannot be read. */
+  previewVersion(id: string): Promise<string | null>
   /** Restore a version as an undoable edit (the current text is recorded first). */
   restoreVersion(id: string): Promise<boolean>
   /** Apply the pending draft as an undoable edit. */
@@ -131,6 +135,7 @@ export interface AppState {
   stopPresenting(): void
   togglePlay(): void
   setShortcutsOpen(open: boolean): void
+  setHistoryOpen(open: boolean): void
   setRowStep(n: number): void
   setSplitRatio(r: number): void
   setDropActive(b: boolean): void
@@ -265,6 +270,14 @@ export function createAppStore(env: Env): AppStore {
       }
     }
 
+    const readVersion = async (store: PresentationStore | null, id: string): Promise<string | null> => {
+      const parsed = parseSnapshotId(id)
+      if (!parsed) return null
+      if (store) return store.readSnapshot(id)
+      const history = untitledHistory()
+      return parsed.source === 'opfs' && history ? history.read(parsed.file) : null
+    }
+
     /** Persist the unsaved state as a draft, or clear the draft when the deck is clean. */
     const syncDraft = async () => {
       const drafts = env.drafts
@@ -388,6 +401,7 @@ export function createAppStore(env: Env): AppStore {
       redoStack: [],
       dialog: null,
       shortcutsOpen: false,
+      historyOpen: false,
       themePreview: null,
       rowStep: 1,
       splitRatio: 0.58,
@@ -619,17 +633,21 @@ export function createAppStore(env: Env): AppStore {
         }
       },
 
+      async previewVersion(id) {
+        try {
+          return await readVersion(get().store, id)
+        } catch {
+          return null
+        }
+      },
+
       async restoreVersion(id) {
         const { store } = get()
         try {
           await get().flush()
           // The current text stays in history, so a restore is never destructive.
           await recordVersion(get().doc.source)
-          const parsed = parseSnapshotId(id)
-          const history = untitledHistory()
-          if (!parsed) throw new Error('Version not found')
-          const text = store ? await store.readSnapshot(id) : parsed.source === 'opfs' && history
-            ? await history.read(parsed.file) : null
+          const text = await readVersion(store, id)
           if (text === null) throw new Error('Version not found')
           if (get().store !== store) return false
           lastTyping = null
@@ -691,6 +709,7 @@ export function createAppStore(env: Env): AppStore {
         if (get().presenting) set({ presenting: false })
       },
       setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+      setHistoryOpen: (open) => set({ historyOpen: open }),
       setRowStep: (n) => set({ rowStep: Math.max(1, n) }),
       setSplitRatio: (r) => set({ splitRatio: Math.max(0.2, Math.min(0.85, r)) }),
       setDropActive: (b) => set({ dropActive: b }),

@@ -87,7 +87,7 @@ suites are what catch regressions.
 
 ## 4. Safety net
 
-- [ ] **Version history and crash recovery.** Implement
+- [x] **Version history and crash recovery.** Implement
       `PresentationStore.snapshot()`: OPFS snapshots everywhere, plus
       `.hype-backups/` in the folder on Chromium. "Version history" in the
       file menu, and restoring unsaved drafts after a crash. The OPFS working
