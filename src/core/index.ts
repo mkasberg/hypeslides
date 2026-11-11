@@ -17,3 +17,4 @@ export {
 export { BUNDLED_FONTS, installedFamilies, pickerFonts } from './fonts'
 export { newDeckSource,WELCOME_SLIDE } from './newDeck'
 export type { NewDeckOptions } from './newDeck'
+export * from './history'

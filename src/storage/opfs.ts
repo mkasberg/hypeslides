@@ -15,48 +15,23 @@
 
 import type { StoreKind } from './types.ts'
 import { HandleStore } from './handleStore.ts'
-import { writeViaWritable } from './fsAccess.ts'
+import { DraftStore, SnapshotArea, opfsPresentationsDir } from './history.ts'
+import type { DirProvider } from './history.ts'
+import { hasCreateWritable, writeViaWorker, writeViaWritable } from './writeFile.ts'
 
 const BASE = 'presentations'
 const CURRENT = 'current'
 const PENDING = 'pending-media'
+/** Deck key (history, drafts) of the single OPFS working copy. */
+export const OPFS_KEY = 'opfs-current'
+
+function defaultHistory(provider?: DirProvider | null): SnapshotArea | null {
+  const p = provider === undefined ? (hasOpfs() ? opfsPresentationsDir : null) : provider
+  return p ? new SnapshotArea(p, OPFS_KEY) : null
+}
 
 export function hasOpfs(): boolean {
   return typeof navigator !== 'undefined' && typeof navigator.storage?.getDirectory === 'function'
-}
-
-function hasCreateWritable(): boolean {
-  return (
-    typeof FileSystemFileHandle !== 'undefined' &&
-    typeof (FileSystemFileHandle.prototype as { createWritable?: unknown }).createWritable === 'function'
-  )
-}
-
-let worker: Worker | null = null
-let nextId = 1
-const pending = new Map<number, { resolve(): void; reject(e: Error): void }>()
-
-function getWorker(): Worker {
-  if (!worker) {
-    worker = new Worker(new URL('./opfsWorker.ts', import.meta.url), { type: 'module' })
-    worker.onmessage = (ev: MessageEvent<{ id: number; ok: boolean; error?: string }>) => {
-      const p = pending.get(ev.data.id)
-      if (!p) return
-      pending.delete(ev.data.id)
-      if (ev.data.ok) p.resolve()
-      else p.reject(new Error(ev.data.error))
-    }
-  }
-  return worker
-}
-
-async function writeViaWorker(path: string[], data: Blob | string): Promise<void> {
-  const buf = typeof data === 'string' ? new TextEncoder().encode(data).buffer : await data.arrayBuffer()
-  const id = nextId++
-  await new Promise<void>((resolve, reject) => {
-    pending.set(id, { resolve, reject })
-    getWorker().postMessage({ id, path, data: buf }, [buf as ArrayBuffer])
-  })
 }
 
 async function currentDir(create: boolean): Promise<FileSystemDirectoryHandle> {
@@ -70,9 +45,15 @@ export class OpfsStore extends HandleStore {
   private opfsRoot: FileSystemDirectoryHandle | null = null
   private label: string
 
-  private constructor(root: FileSystemDirectoryHandle, markdownName: string, label: string) {
-    super(root, markdownName)
+  private constructor(
+    root: FileSystemDirectoryHandle, markdownName: string, label: string, history: SnapshotArea | null,
+  ) {
+    super(root, markdownName, history)
     this.label = label
+  }
+
+  override get key(): string {
+    return OPFS_KEY
   }
 
   override get name(): string {
@@ -101,7 +82,7 @@ export class OpfsStore extends HandleStore {
     try {
       const dir = await currentDir(false)
       const md = await HandleStore.findMarkdown(dir)
-      return md ? new OpfsStore(dir, md, label) : null
+      return md ? new OpfsStore(dir, md, label, defaultHistory()) : null
     } catch {
       return null
     }
@@ -123,7 +104,10 @@ export class OpfsStore extends HandleStore {
       /* none yet */
     }
     const dir = await base.getDirectoryHandle(CURRENT, { create: true })
-    const store = new OpfsStore(dir, opts.markdownName ?? 'presentation.md', opts.label ?? 'Untitled')
+    // A replaced working copy is a different deck: its history and draft go too.
+    await new DraftStore(opfsPresentationsDir).clear(OPFS_KEY)
+    await defaultHistory()?.clear()
+    const store = new OpfsStore(dir, opts.markdownName ?? 'presentation.md', opts.label ?? 'Untitled', defaultHistory())
     await store.writeMarkdown(markdown)
     return store
   }
@@ -138,7 +122,7 @@ export class OpfsStore extends HandleStore {
     const root = await navigator.storage.getDirectory()
     const base = await root.getDirectoryHandle(BASE, { create: true })
     const dir = await base.getDirectoryHandle(PENDING, { create: true })
-    return new OpfsStore(dir, 'presentation.md', 'Untitled')
+    return new OpfsStore(dir, 'presentation.md', 'Untitled', null)
   }
 
   static async clearPending(): Promise<void> {
@@ -152,8 +136,10 @@ export class OpfsStore extends HandleStore {
   }
 
   /** Test seam: wrap any directory handle (e.g. an in-memory fake). */
-  static async fromHandle(dir: FileSystemDirectoryHandle, label?: string): Promise<OpfsStore> {
+  static async fromHandle(
+    dir: FileSystemDirectoryHandle, label?: string, history?: DirProvider | null,
+  ): Promise<OpfsStore> {
     const md = (await HandleStore.findMarkdown(dir)) ?? 'presentation.md'
-    return new OpfsStore(dir, md, label ?? dir.name)
+    return new OpfsStore(dir, md, label ?? dir.name, defaultHistory(history))
   }
 }

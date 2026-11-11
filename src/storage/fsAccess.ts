@@ -1,32 +1,74 @@
 import type { StoreKind } from './types.ts'
 import { HandleStore } from './handleStore.ts'
+import { writeViaWritable } from './writeFile.ts'
+import { SnapshotArea, opfsPresentationsDir } from './history.ts'
+import type { DirProvider } from './history.ts'
+import { hasOpfs } from './opfs.ts'
+import type { SnapshotInfo } from './types.ts'
+import { backupFileName, hash16, parseBackupFileName, snapshotId } from '../core/history.ts'
 
-/** Atomic-ish write: createWritable() buffers into a swap file and commits on close(). */
-export async function writeViaWritable(
-  dir: FileSystemDirectoryHandle,
-  name: string,
-  data: Blob | string,
-): Promise<void> {
-  const fh = await dir.getFileHandle(name, { create: true })
-  const w = await fh.createWritable()
-  try {
-    await w.write(data)
-    await w.close()
-  } catch (e) {
-    try {
-      await w.abort()
-    } catch {
-      /* ignore */
-    }
-    throw e
-  }
+/** Hype's backup folder, created beside the presentation. */
+export const BACKUP_DIR = '.hype-backups'
+
+export { writeViaWritable }
+
+/** OPFS history for a folder; `provider` undefined = the real OPFS, null = none. */
+function historyArea(handle: FileSystemDirectoryHandle, md: string, provider?: DirProvider | null) {
+  const p = provider === undefined ? (hasOpfs() ? opfsPresentationsDir : null) : provider
+  return p ? new SnapshotArea(p, `fs-${hash16(`${handle.name}/${md}`)}`) : null
 }
 
 export class FsAccessStore extends HandleStore {
   readonly kind: StoreKind = 'fs-access'
 
-  private constructor(root: FileSystemDirectoryHandle, markdownName: string) {
-    super(root, markdownName)
+  private constructor(root: FileSystemDirectoryHandle, markdownName: string, history: SnapshotArea | null) {
+    super(root, markdownName, history)
+  }
+
+  override get key(): string {
+    return `fs-${hash16(`${this.root.name}/${this.markdownName}`)}`
+  }
+
+  /**
+   * Like Hype's save: before replacing the markdown, copy the previous content
+   * to `.hype-backups/<md>.<stamp>-<hash16>.bak` (skipped if empty or unchanged).
+   * If the backup cannot be written the save is abandoned and the file untouched.
+   */
+  override async writeMarkdown(text: string): Promise<void> {
+    let previous: string | null = null
+    try {
+      previous = await (await (await this.root.getFileHandle(this.markdownName)).getFile()).text()
+    } catch {
+      /* first write */
+    }
+    if (previous && previous !== text) {
+      const dir = await this.root.getDirectoryHandle(BACKUP_DIR, { create: true })
+      await writeViaWritable(dir, backupFileName(this.markdownName, Date.now(), hash16(previous)), previous)
+    }
+    await super.writeMarkdown(text)
+  }
+
+  protected override async listFolderBackups(): Promise<SnapshotInfo[]> {
+    let dir: FileSystemDirectoryHandle
+    try {
+      dir = await this.root.getDirectoryHandle(BACKUP_DIR)
+    } catch {
+      return []
+    }
+    const out: SnapshotInfo[] = []
+    for await (const [name, h] of dir.entries()) {
+      if (h.kind !== 'file') continue
+      const parsed = parseBackupFileName(this.markdownName, name)
+      if (!parsed) continue
+      const size = (await (h as FileSystemFileHandle).getFile()).size
+      out.push({ id: snapshotId('folder', name), size, source: 'folder', ...parsed })
+    }
+    return out
+  }
+
+  protected override async readFolderBackup(file: string): Promise<string> {
+    const dir = await this.root.getDirectoryHandle(BACKUP_DIR)
+    return (await (await dir.getFileHandle(file)).getFile()).text()
   }
 
   protected writeFile(dir: FileSystemDirectoryHandle, name: string, data: Blob | string) {
@@ -39,7 +81,7 @@ export class FsAccessStore extends HandleStore {
    */
   static async fromHandle(
     handle: FileSystemDirectoryHandle,
-    opts: { createIfMissing?: boolean } = {},
+    opts: { createIfMissing?: boolean; history?: DirProvider | null } = {},
   ): Promise<FsAccessStore> {
     let md = await HandleStore.findMarkdown(handle)
     if (!md) {
@@ -47,7 +89,7 @@ export class FsAccessStore extends HandleStore {
       md = 'presentation.md'
       await writeViaWritable(handle, md, '')
     }
-    return new FsAccessStore(handle, md)
+    return new FsAccessStore(handle, md, historyArea(handle, md, opts.history))
   }
 
   /** Create a store in a folder with an explicit markdown name (writes initial text). */
@@ -55,9 +97,10 @@ export class FsAccessStore extends HandleStore {
     handle: FileSystemDirectoryHandle,
     initialMarkdown: string,
     markdownName = 'presentation.md',
+    opts: { history?: DirProvider | null } = {},
   ): Promise<FsAccessStore> {
     await writeViaWritable(handle, markdownName, initialMarkdown)
-    return new FsAccessStore(handle, markdownName)
+    return new FsAccessStore(handle, markdownName, historyArea(handle, markdownName, opts.history))
   }
 }
 

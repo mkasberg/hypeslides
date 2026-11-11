@@ -1,17 +1,18 @@
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryDirHandle, asDirHandle } from '../storage/testing/memoryFs'
-import { FsAccessStore, OpfsStore } from '../storage'
+import { DraftStore, FsAccessStore, OpfsStore } from '../storage'
 import type { CreateStatus, PresentationStore } from '../storage'
 import { createAppStore, isDirty, remapSelection } from './store'
 import type { Env } from './env'
-import { createState, parsedDeck } from '../core'
+import { createState, hash16, makeDraft, parsedDeck } from '../core'
 
 const deckOf = (...slides: string[]) => slides.map((s) => s + '\n').join('\n---\n\n')
 
 function fakeEnv(over: Partial<Env> = {}): Env {
   return {
     fsAccess: true,
+    drafts: null,
     restoreLast: async () => null,
     requestAccess: async () => true,
     openHandle: (h) => FsAccessStore.fromHandle(h, { createIfMissing: true }),
@@ -340,4 +341,137 @@ describe('save flows', () => {
 it('type check helper', () => {
   const s: PresentationStore | null = null
   expect(s).toBeNull()
+})
+
+describe('version history and crash recovery', () => {
+  const opfs = () => {
+    const root = new MemoryDirHandle('opfs')
+    const provider = async (create: boolean) => asDirHandle(await root.getDirectoryHandle('presentations', { create }))
+    return { provider, drafts: new DraftStore(provider) }
+  }
+  const flushAll = async (app: ReturnType<typeof createAppStore>) => { await app.getState().flush() }
+  /** An app whose remembered folder is `dir`, opened through `store`. */
+  const appOn = (drafts: DraftStore, dir: MemoryDirHandle, store: () => Promise<PresentationStore>) =>
+    createAppStore(fakeEnv({
+      drafts, restoreLast: async () => ({ handle: asDirHandle(dir), granted: true }), openHandle: store,
+    }))
+
+  it('persists an unsaved untitled deck as a draft and offers it after a "crash"', async () => {
+    const { drafts } = opfs()
+    const first = createAppStore(fakeEnv({ drafts }))
+    await first.getState().init()
+    first.getState().typeSource('# My unsaved idea\n')
+    await vi.advanceTimersByTimeAsync(1100) // autosave debounce writes the draft
+    expect((await drafts.read('untitled'))?.source).toBe('# My unsaved idea\n')
+
+    const second = createAppStore(fakeEnv({ drafts }))
+    await second.getState().init()
+    const pending = second.getState().pendingRecovery
+    expect(pending?.draft.source).toBe('# My unsaved idea\n')
+    expect(pending?.conflict).toBe(false)
+    expect(second.getState().doc.source).not.toContain('My unsaved idea')
+
+    await second.getState().recoverDraft()
+    expect(second.getState().pendingRecovery).toBeNull()
+    expect(second.getState().doc.source).toBe('# My unsaved idea\n')
+    second.getState().undo() // recovery is a normal undoable edit
+    expect(second.getState().doc.source).toContain('HypeSlides')
+  })
+
+  it('discardDraft clears the draft for good', async () => {
+    const { drafts } = opfs()
+    const first = createAppStore(fakeEnv({ drafts }))
+    await first.getState().init()
+    first.getState().typeSource('# Draft\n')
+    await flushAll(first)
+    const second = createAppStore(fakeEnv({ drafts }))
+    await second.getState().init()
+    await second.getState().discardDraft()
+    expect(second.getState().pendingRecovery).toBeNull()
+    expect(await drafts.read('untitled')).toBeNull()
+    const third = createAppStore(fakeEnv({ drafts }))
+    await third.getState().init()
+    expect(third.getState().pendingRecovery).toBeNull()
+  })
+
+  it('a clean save leaves no draft, and a draft equal to the saved file is dropped', async () => {
+    const { drafts, provider } = opfs()
+    const dir = new MemoryDirHandle('talk').put('presentation.md', deckOf('# A'))
+    const store = await FsAccessStore.fromHandle(asDirHandle(dir), { history: provider })
+    const app = appOn(drafts, dir, async () => store)
+    await app.getState().init()
+    app.getState().typeSource(deckOf('# A', '# B'))
+    await vi.advanceTimersByTimeAsync(1100)
+    expect(read(dir)).toContain('# B')
+    expect(await drafts.read(store.key)).toBeNull()
+
+    await drafts.write(makeDraft(store.key, read(dir), '', 0, 0, 1))
+    const again = appOn(drafts, dir, async () => store)
+    await again.getState().init()
+    expect(again.getState().pendingRecovery).toBeNull()
+    expect(await drafts.read(store.key)).toBeNull()
+  })
+
+  it('keeps a draft when the folder write fails, and flags a changed file as a conflict', async () => {
+    const { drafts, provider } = opfs()
+    const dir = new MemoryDirHandle('talk').put('presentation.md', deckOf('# A'))
+    const open = () => FsAccessStore.fromHandle(asDirHandle(dir), { history: provider })
+    const real = await open()
+    const failing: PresentationStore = Object.create(real, {
+      writeMarkdown: { value: async () => { throw new Error('disk full') } },
+    })
+    const app = appOn(drafts, dir, async () => failing)
+    await app.getState().init()
+    app.getState().typeSource(deckOf('# A', '# Lost?'))
+    await vi.advanceTimersByTimeAsync(1100)
+    expect((await drafts.read(real.key))?.source).toContain('# Lost?')
+    expect(read(dir)).not.toContain('Lost?')
+
+    // The file is edited elsewhere before the next session.
+    dir.put('presentation.md', deckOf('# A', '# Changed elsewhere'))
+    const app2 = appOn(drafts, dir, open)
+    await app2.getState().init()
+    expect(app2.getState().pendingRecovery?.conflict).toBe(true)
+    await app2.getState().recoverDraft()
+    expect(app2.getState().doc.source).toContain('# Lost?')
+    // The copy the draft replaces is kept in history.
+    const hashes = (await app2.getState().listVersions()).map((v) => v.hash)
+    expect(hashes).toContain(hash16(deckOf('# A', '# Changed elsewhere')))
+  })
+
+  it('lists versions and restores one as an undoable edit, recording the current text first', async () => {
+    const { drafts, provider } = opfs()
+    const dir = new MemoryDirHandle('talk').put('presentation.md', deckOf('# One'))
+    const store = await FsAccessStore.fromHandle(asDirHandle(dir), { history: provider })
+    const app = appOn(drafts, dir, async () => store)
+    await app.getState().init()
+    app.getState().typeSource(deckOf('# Two'))
+    await flushAll(app)
+    app.getState().typeSource(deckOf('# Three'))
+    await flushAll(app)
+    const versions = await app.getState().listVersions()
+    expect(versions.map((v) => v.hash)).toEqual([deckOf('# Three'), deckOf('# Two'), deckOf('# One')].map(hash16))
+
+    app.getState().typeSource(deckOf('# Unsaved tail')) // restore must not lose this
+    expect(await app.getState().restoreVersion(versions[2].id)).toBe(true)
+    expect(app.getState().doc.source).toBe(deckOf('# One'))
+    app.getState().undo()
+    expect(app.getState().doc.source).toBe(deckOf('# Unsaved tail'))
+    expect((await app.getState().listVersions()).map((v) => v.hash)).toContain(hash16(deckOf('# Unsaved tail')))
+    expect(await app.getState().restoreVersion('opfs:nope.md')).toBe(false)
+  })
+
+  it('untitled decks have a history too', async () => {
+    const { drafts } = opfs()
+    const app = createAppStore(fakeEnv({ drafts }))
+    await app.getState().init()
+    app.getState().typeSource('# First\n')
+    await flushAll(app)
+    app.getState().typeSource('# Second\n')
+    await flushAll(app)
+    const versions = await app.getState().listVersions()
+    expect(versions).toHaveLength(2)
+    await app.getState().restoreVersion(versions[1].id)
+    expect(app.getState().doc.source).toBe('# First\n')
+  })
 })

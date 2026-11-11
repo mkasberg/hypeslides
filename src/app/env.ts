@@ -3,13 +3,15 @@
 
 import {
   FsAccessStore, OpfsStore, capabilities, createPresentationFolder, importDataTransfer, importPickedFiles,
-  openFolder, rememberDirectory, requestAccess, restoreLast, exportPresentation, downloadBlob,
+  openFolder, rememberDirectory, DraftStore, opfsPresentationsDir, requestAccess, restoreLast, exportPresentation, downloadBlob,
 } from '../storage'
 import type { CreateStatus, PresentationStore, RestoredDirectory } from '../storage'
 
 export interface Env {
   /** Real folders on disk (File System Access) are available. */
   fsAccess: boolean
+  /** Crash-recovery drafts and the history of store-less (untitled) decks; null without OPFS. */
+  drafts: DraftStore | null
   restoreLast(): Promise<RestoredDirectory | null>
   requestAccess(handle: FileSystemDirectoryHandle): Promise<boolean>
   openHandle(handle: FileSystemDirectoryHandle): Promise<PresentationStore>
@@ -36,6 +38,9 @@ export function realEnv(): Env {
   return {
     get fsAccess() {
       return caps().fsAccess
+    },
+    get drafts() {
+      return caps().opfs ? new DraftStore(opfsPresentationsDir) : null
     },
     restoreLast,
     requestAccess,

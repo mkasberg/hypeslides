@@ -11,6 +11,10 @@
 //   presentation.md (any single *.md at the root)
 //   images/  videos/
 
+import type { SnapshotInfo } from '../core/history.ts'
+
+export type { SnapshotInfo, SnapshotSource } from '../core/history.ts'
+
 export type StoreKind = 'fs-access' | 'opfs'
 
 export interface PresentationStore {
@@ -38,8 +42,24 @@ export interface PresentationStore {
   /** All media filenames present (for missing-media checks and export). */
   listMedia(): Promise<string[]>
 
-  /** Version history hook. MVP backends may implement as a no-op. */
-  snapshot(text: string): Promise<void>
+  /**
+   * Stable identifier of this deck for history and crash-recovery drafts:
+   * `opfs-current` for the OPFS working copy, `fs-<hash>` for a folder.
+   */
+  readonly key: string
+
+  // ---- version history (see src/core/history.ts, src/storage/history.ts) ----
+  /**
+   * Record `text` as a version in OPFS history. Returns null if it equals the
+   * newest recorded version. Call before overwriting the markdown. (The
+   * File System Access backend also writes `.hype-backups/` itself inside
+   * writeMarkdown, as Hype does on save.)
+   */
+  snapshot(text: string): Promise<SnapshotInfo | null>
+  /** All versions (OPFS history merged with the folder's `.hype-backups/`), newest first, deduped by content. */
+  listSnapshots(): Promise<SnapshotInfo[]>
+  /** The Markdown of a version listed by listSnapshots. Throws if missing. */
+  readSnapshot(id: string): Promise<string>
 }
 
 /** Feature detection result used by the UI to choose Open/Save vs Import/Export. */
