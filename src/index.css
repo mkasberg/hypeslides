@@ -94,6 +94,7 @@ button { font: inherit; color: inherit; }
 .logo { background: none; border: 0; font-size: 21px; font-weight: 700; color: var(--ui-accent); cursor: pointer; padding: 4px 6px; }
 .icon-btn, .pill, .segmented button, .tool, .btn { cursor: pointer; border: 1px solid var(--ui-border); background: var(--ui-button); border-radius: var(--ui-radius); }
 .icon-btn { display: inline-grid; place-items: center; width: 36px; height: 34px; }
+a.icon-btn { color: inherit; text-decoration: none; box-sizing: border-box; }
 .icon-btn:hover, .pill:hover, .tool:hover, .btn:hover { background: var(--ui-hover); }
 .icon-btn.active { background: var(--ui-accent); color: var(--ui-accent-text); border-color: var(--ui-accent); }
 .icon-btn.attention { border-color: var(--ui-warning); color: var(--ui-warning); box-shadow: 0 0 0 1px var(--ui-warning) inset; }
