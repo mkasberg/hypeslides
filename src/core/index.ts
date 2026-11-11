@@ -11,5 +11,5 @@ export {
   THEMES, DEFAULT_THEME, DEFAULT_FONT, DEFAULT_PALETTE, PALETTE_KEYS, themeNames, getTheme, themeName,
   fontFor, paletteFor, title,
 } from './themes'
-export { newDeckSource } from './newDeck'
+export { newDeckSource, WELCOME_SLIDE } from './newDeck'
 export type { NewDeckOptions } from './newDeck'

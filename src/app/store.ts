@@ -6,7 +6,7 @@ import { create } from 'zustand'
 import type { StoreApi, UseBoundStore } from 'zustand'
 import {
   addSlide, createState, deleteSlides, duplicateSlides, dropSelection, editSlide, editSource, extendSelection,
-  headerOf, matchImageBackground, moveSelection, newDeckSource, parsedDeck, replaceMedia, select, selectAt,
+  headerOf, matchImageBackground, moveSelection, newDeckSource, parsedDeck, WELCOME_SLIDE, replaceMedia, select, selectAt,
   setFont, setMediaBackground, setMediaMode, setMediaPosition, setMediaSize, setTheme, slideCount,
   title as docTitle,
 } from '../core'
@@ -248,7 +248,7 @@ export function createAppStore(env: Env): AppStore {
     const newMemoryDeck = (storeNull = true) => {
       clearTimers()
       get().media?.revokeAll()
-      const source = newDeckSource({ title: 'Untitled' })
+      const source = newDeckSource({ title: 'Untitled', body: WELCOME_SLIDE })
       lastTyping = null
       set({
         doc: createState(source), savedSource: source, undoStack: [], redoStack: [],
@@ -321,7 +321,7 @@ export function createAppStore(env: Env): AppStore {
             const current = await env.openCurrentOpfs()
             if (current) await loadStore(current)
             else {
-              const source = newDeckSource({ title: 'Untitled' })
+              const source = newDeckSource({ title: 'Untitled', body: WELCOME_SLIDE })
               const store = await env.createOpfs(source, 'Untitled')
               if (store) {
                 await loadStore(store)
@@ -491,7 +491,7 @@ export function createAppStore(env: Env): AppStore {
       async newDeck() {
         if (!(await confirmLeave())) return
         if (!env.fsAccess) {
-          const source = newDeckSource({ title: 'Untitled' })
+          const source = newDeckSource({ title: 'Untitled', body: WELCOME_SLIDE })
           const store = await env.createOpfs(source, 'Untitled')
           if (store) {
             await loadStore(store)
