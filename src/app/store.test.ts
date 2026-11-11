@@ -45,7 +45,7 @@ describe('startup', () => {
     const s = app.getState()
     expect(s.ready).toBe(true)
     expect(s.store).toBeNull()
-    expect(s.doc.source).toContain('# Untitled')
+    expect(s.doc.source).toContain('# HypeSlides\n\n* Simple Markdown presentations')
     expect(isDirty(s)).toBe(false)
   })
 
