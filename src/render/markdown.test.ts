@@ -57,6 +57,10 @@ describe('renderSlideHtml', () => {
     expect(html).toContain('<blockquote>')
     expect(html).toContain('<code>c</code>')
   })
+  it('splits quoted lines into paragraphs', () => {
+    const html = renderSlideHtml('> a\n> b *c*\n>\n> d')
+    expect(html).toBe('<blockquote>\n<p>a</p>\n<p>b <em>c</em></p>\n<p>d</p>\n</blockquote>\n')
+  })
   it('marks attribution paragraphs', () => {
     expect(renderSlideHtml('— Hype')).toContain('<p class="attribution">')
   })
