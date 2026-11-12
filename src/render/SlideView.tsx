@@ -104,7 +104,11 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
 
   const wantsEdge = hasFile && !span && !placed && background !== 'theme' && background !== 'blur' &&
     (background === 'auto' || (!background && !isVideo)) && !bgProp
-  const needsInfo = !!fileUrl && (wantsEdge || (isVideo && background === 'blur'))
+  // Export has no player: a video is painted as its poster, else its extracted first frame
+  // (what Hype prints). Wait for a named poster to resolve before deciding it's missing.
+  const exporting = mode === 'export'
+  const wantsStill = exporting && isVideo && (!media?.poster || posterUrl === null)
+  const needsInfo = !!fileUrl && (wantsEdge || (isVideo && background === 'blur') || wantsStill)
   const info = useMediaInfo(fileUrl, isVideo, needsInfo)
 
   // ---- palette resolution, in the order of Hype's paintSlide ----
@@ -212,6 +216,12 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   const softened = hasFile && !isVideo && !placed && !!text
   const showMissing = hasFile && fileUrl === null
   const live = mode === 'present'
+  // Export: set until everything async that changes the painted slide has resolved, so
+  // `whenPrintReady` knows when the page is final.
+  const pending = exporting && (
+    (hasFile && fileUrl === undefined) || (isVideo && !!media?.poster && posterUrl === undefined) ||
+    (needsInfo && !info)
+  )
 
   // A video whose picture this browser can't decode (e.g. HEVC in Chrome on
   // Linux) loads without an error and plays its audio over black, reporting
@@ -227,7 +237,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   }
 
   return (
-    <div ref={outerRef} className="hs-outer" style={{ background: fill }}>
+    <div ref={outerRef} className="hs-outer" style={{ background: fill }} data-pending={pending ? '' : undefined}>
       <div className="hs-slide" style={cssVars}>
         {blurBackdrop && (
           <img
@@ -255,7 +265,16 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             }}
           />
         )}
-        {media && hasFile && fileUrl && isVideo && (
+        {media && hasFile && fileUrl && isVideo && exporting && (posterUrl || info?.still) && (
+          <img
+            className="hs-media"
+            src={posterUrl || info?.still || undefined}
+            alt=""
+            draggable={false}
+            style={{ ...rectStyle(mrect), objectFit: span ? 'cover' : 'contain' }}
+          />
+        )}
+        {media && hasFile && fileUrl && isVideo && !exporting && (
           live || !posterUrl ? (
             <video
               ref={videoRef}
@@ -287,7 +306,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             <small>Phone videos are often HEVC (H.265). Convert to H.264 MP4 to play everywhere.</small>
           </div>
         )}
-        {isVideo && fileUrl && !live && !undecodable && (
+        {isVideo && fileUrl && !live && !exporting && !undecodable && (
           <div
             className="hs-play"
             style={{ left: mrect.x + mrect.w / 2 - 75, top: mrect.y + mrect.h / 2 - 75 }}
@@ -310,7 +329,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             />
           </div>
         )}
-        {banner && mode !== 'present' && <div className="hs-problem">{banner}</div>}
+        {banner && !live && !exporting && <div className="hs-problem">{banner}</div>}
       </div>
     </div>
   )

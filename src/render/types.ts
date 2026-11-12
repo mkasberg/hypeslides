@@ -20,8 +20,10 @@ export interface SlideViewProps {
    * 'thumbnail': static, cheap (no video playback, no animation).
    * 'preview':   editor preview; videos show first frame / poster, no autoplay.
    * 'present':   live presentation; videos autoplay per options.
+   * 'export':    print/PDF; fully static, videos are an <img> (poster, else first
+   *              frame), no play badge, no problem banner.
    */
-  mode: 'thumbnail' | 'preview' | 'present'
+  mode: 'thumbnail' | 'preview' | 'present' | 'export'
   /** Present mode: toggled by Space to play/pause video. Increment to toggle. */
   playToggle?: number
 }
