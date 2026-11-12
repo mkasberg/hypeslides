@@ -1,3 +1,4 @@
+import { unzlibSync } from 'fflate'
 import type { Page } from '@playwright/test'
 import { deckSeed, fixture, menuItem, pasteImage, slides, typeInEditor } from './helpers.ts'
 import { expect, fakeText, test } from './fixtures.ts'
@@ -334,4 +335,48 @@ test.describe('version history', () => {
     const bak = (await list()).find((p) => p.endsWith('.bak'))!
     expect(await fakeText(page, bak)).toContain('# First save')
   })
+})
+
+test('Ctrl+P exports the deck as one vector PDF page per slide via the print dialog', async ({ openOpfs }) => {
+  const page = await openOpfs()
+  await page.addInitScript(() => {
+    const w = window as unknown as { __prints: string[] }
+    w.__prints = []
+    window.print = () => void w.__prints.push(document.title)
+  })
+  await page.reload()
+  const chooser = page.waitForEvent('filechooser')
+  await menuItem(page, 'File menu', /Import folder/)
+  await (await chooser).setFiles(fixture('deck'))
+  await expect(slides(page)).toHaveCount(4)
+
+  await page.keyboard.press('Control+P')
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __prints: string[] }).__prints.length)).toBe(1)
+  expect(await page.evaluate(() => (window as unknown as { __prints: string[] }).__prints)).toEqual(['E2E Deck'])
+  await expect(page.locator('.hs-print-root .hs-print-page')).toHaveCount(4)
+
+  await page.emulateMedia({ media: 'print' })
+  const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true })
+  const raw = pdf.toString('latin1')
+  expect(raw.match(/\/Type\s*\/Page(?!s)/g)).toHaveLength(4)
+  expect(raw).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+960\s+540\s*\]/)
+
+  // Text stays vector: slide text is in (Flate-compressed) content streams as glyph runs, not images.
+  let streams = ''
+  for (const m of raw.matchAll(/stream\r?\n/g)) {
+    const start = m.index + m[0].length
+    const end = raw.indexOf('endstream', start)
+    try {
+      streams += Buffer.from(unzlibSync(new Uint8Array(pdf.subarray(start, end).subarray(0, end - start)))).toString('latin1')
+    } catch {
+      /* not a Flate stream */
+    }
+  }
+  expect(streams).toMatch(/\bTj\b|\bTJ\b/)
+
+  // Cleanup happens on afterprint, and the title is restored.
+  await page.emulateMedia({ media: 'screen' })
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')))
+  await expect(page.locator('.hs-print-root')).toHaveCount(0)
+  await expect(page).toHaveTitle(/HypeSlides/)
 })

@@ -9,12 +9,13 @@ import {
   headerOf, makeDraft, matchImageBackground, moveSelection, newDeckSource, parsedDeck, parseSnapshotId, recoveryFor,
   restoreVersion, WELCOME_SLIDE, replaceMedia, select, selectAt,
   setFont, setMediaBackground, setMediaMode, setMediaPosition, setMediaSize, setTheme, slideCount,
-  title as docTitle, defaultPasteName, isVideoFile, parseMedia, resolvePasteName, selectedSlide, withReplacedMedia,
+  title as docTitle, defaultPasteName, findProblems, parseDeck, slideProblemStatus, isVideoFile, parseMedia, resolvePasteName, selectedSlide, withReplacedMedia,
 } from '../core'
 import type { DocState, PendingRecovery } from '../core'
 import { createMediaUrlCache, mediaKind } from '../storage'
 import type { MediaUrlCache, PresentationStore, SnapshotInfo } from '../storage'
 import type { Env } from './env'
+import { mediaExistsFor } from './problems'
 import { processPastedMedia } from './imageProcessor'
 import type { ProcessHandle, ProcessedMedia } from './imageProcessor'
 
@@ -54,6 +55,8 @@ export interface AppState {
   /** The last non-overview mode (what Ctrl+M returns to). */
   prevMode: 'visual' | 'markdown'
   presenting: boolean
+  /** The print layer (`PrintDeck`) is mounted for a PDF export. */
+  printing: boolean
   /** Present mode: incremented to toggle video / animation playback. */
   playToggle: number
   store: PresentationStore | null
@@ -148,6 +151,10 @@ export interface AppState {
   save(): Promise<void>
   saveAs(): Promise<void>
   exportDeck(): Promise<void>
+  /** Check for blocking problems, then print the deck (the browser's "Save as PDF"). */
+  exportPdf(): Promise<void>
+  /** Printing is done (or was cancelled); unmounts the print layer. */
+  finishPrint(): void
   flush(): Promise<void>
   checkExternal(): Promise<void>
 
@@ -390,6 +397,7 @@ export function createAppStore(env: Env): AppStore {
       mode: 'visual',
       prevMode: 'visual',
       presenting: false,
+      printing: false,
       playToggle: 0,
       store: null,
       pendingReopen: null,
@@ -872,6 +880,27 @@ export function createAppStore(env: Env): AppStore {
           flash(`Export failed: ${e instanceof Error ? e.message : e}`, true)
         }
       },
+
+      async exportPdf() {
+        if (get().printing) return
+        const { doc, media } = get()
+        const parsed = parseDeck(doc.source)
+        const mediaExists = await mediaExistsFor(parsed, media)
+        // Like Hype, missing media (errors) blocks the export; warnings do not.
+        const errors = findProblems(doc.source, { mediaExists }, parsed).filter(
+          (p) => p.severity === 'error' && p.slide !== null,
+        )
+        if (errors.length) {
+          const slide = errors[0].slide!
+          get().select(slide)
+          return flash(slideProblemStatus(slide, errors.filter((p) => p.slide === slide)), true)
+        }
+        if (get().printing) return
+        flash('Choose \u201CSave as PDF\u201D in the print dialog')
+        set({ presenting: false, printing: true })
+      },
+
+      finishPrint: () => set({ printing: false }),
 
       async checkExternal() {
         const s = get()
