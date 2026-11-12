@@ -88,6 +88,7 @@ interface Highlighter {
 let highlighterPromise: Promise<Highlighter> | undefined
 const loadedLanguages = new Set<string>()
 const pendingLanguages = new Map<string, Promise<void>>()
+const inflight = new Set<Promise<void>>()
 const listeners = new Set<() => void>()
 const cache = new Map<string, string>()
 let highlighter: Highlighter | undefined
@@ -96,6 +97,11 @@ let highlighter: Highlighter | undefined
 export function onHighlighterChange(fn: () => void): () => void {
   listeners.add(fn)
   return () => void listeners.delete(fn)
+}
+
+/** Resolves once no language is loading (including ones requested while waiting). */
+export async function highlighterIdle(): Promise<void> {
+  while (inflight.size) await Promise.all([...inflight])
 }
 
 function escapeHtml(s: string): string {
@@ -130,6 +136,9 @@ export function loadLanguage(lang: string): Promise<void> {
       // Unsupported in this engine: stay plain.
     })
     pendingLanguages.set(name, pending)
+    const p = pending
+    inflight.add(p)
+    void p.finally(() => inflight.delete(p))
   }
   return pending
 }

@@ -61,6 +61,19 @@ const CSS = `
 .hs-undecodable small{font-size:26px;opacity:.7}
 .hs-play{position:absolute;width:150px;height:150px;border-radius:50%;border:8px solid rgba(255,255,255,.9);background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
 .hs-play::after{content:'';margin-left:14px;border-left:50px solid rgba(255,255,255,.95);border-top:30px solid transparent;border-bottom:30px solid transparent}
+/* PDF export: <PrintDeck> is portaled into <body>. On screen it is laid out (fonts and text fit
+   measure the DOM) but offscreen and invisible; when printing only it remains. */
+.hs-print-root{position:fixed;left:-100000px;top:0;width:1280px;visibility:hidden;pointer-events:none}
+.hs-print-page{width:1280px;height:720px;overflow:hidden;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hs-print-page>.hs-outer{width:1280px}
+@page{size:1280px 720px;margin:0}
+@media print{
+body>*:not(.hs-print-root){display:none!important}
+html,body{margin:0;padding:0;background:none!important;overflow:visible!important;height:auto!important}
+.hs-print-root{position:static;left:auto;width:auto;visibility:visible}
+.hs-print-page{break-after:page;page-break-after:always}
+.hs-print-page:last-child{break-after:auto;page-break-after:auto}
+}
 .hs-problem{position:absolute;left:0;right:0;bottom:0;height:80px;background:#9b3030;color:#fff;font:21px system-ui,sans-serif;display:flex;align-items:center;padding:0 30px}
 `
 
