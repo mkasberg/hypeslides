@@ -669,6 +669,14 @@ export function createAppStore(env: Env): AppStore {
         if (conflict) await recordVersion(get().savedSource)
         await recordVersion(draft.source)
         lastTyping = null
+        if (!get().store && !pendingMedia) {
+          // An untitled draft's media is still in the pending area from before the reload.
+          const kept = await env.openPending().catch(() => null)
+          if (kept) {
+            pendingMedia = kept
+            set({ media: createMediaUrlCache(kept), mediaRev: get().mediaRev + 1 })
+          }
+        }
         commit(select(editSource(get().doc, draft.source), draft.selected))
         flash(conflict
           ? 'Recovered your last draft. The saved copy had also changed; it is in Version history.'
@@ -680,6 +688,11 @@ export function createAppStore(env: Env): AppStore {
         if (!pending) return
         set({ pendingRecovery: null })
         await env.drafts?.clear(pending.draft.key).catch(() => {})
+        // Media held for the discarded untitled draft goes with it.
+        if (!get().store) {
+          pendingMedia = null
+          await env.clearPending().catch(() => {})
+        }
       },
 
       // ---- modes --------------------------------------------------------
