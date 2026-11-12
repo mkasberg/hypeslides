@@ -108,7 +108,7 @@ export default function App() {
       </main>
       <footer className="footbar">
         <span className="storage-label">{storageLabel({ store, doc, savedSource, saving })}</span>
-        <span className="credit">Built with {'\u2665\uFE0E'} by <a href="https://www.mikekasberg.com" target="_blank" rel="noopener">Mike Kasberg</a></span>
+        <span className="credit">Built with {'\u2665\uFE0E'} by <a href="https://www.mikekasberg.com" target="_blank" rel="noopener">Mike Kasberg</a>. Based on <a href="https://github.com/omacom/hype" target="_blank" rel="noopener">Hype</a> by <a href="https://dhh.dk/" target="_blank" rel="noopener">DHH</a>.</span>
       </footer>
       {presenting && <PresentView />}
       {dropActive && <div className="drop-overlay">Drop a folder to open it, or an image / video to add it to the slide</div>}
