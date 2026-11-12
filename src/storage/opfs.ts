@@ -125,6 +125,18 @@ export class OpfsStore extends HandleStore {
     return new OpfsStore(dir, 'presentation.md', 'Untitled', null)
   }
 
+  /** The existing pending-media area, untouched (e.g. to go with a recovered draft); null if none. */
+  static async openPending(): Promise<OpfsStore | null> {
+    try {
+      const root = await navigator.storage.getDirectory()
+      const base = await root.getDirectoryHandle(BASE)
+      const dir = await base.getDirectoryHandle(PENDING)
+      return new OpfsStore(dir, 'presentation.md', 'Untitled', null)
+    } catch {
+      return null
+    }
+  }
+
   static async clearPending(): Promise<void> {
     try {
       const root = await navigator.storage.getDirectory()

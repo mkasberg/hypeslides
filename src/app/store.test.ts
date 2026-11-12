@@ -22,6 +22,7 @@ function fakeEnv(over: Partial<Env> = {}): Env {
     openCurrentOpfs: async () => null,
     createOpfs: async () => null,
     createPending: async () => null,
+    openPending: async () => null,
     clearPending: async () => {},
     importFiles: async () => { throw new Error('no') },
     importDrop: async () => null,
@@ -376,6 +377,31 @@ describe('version history and crash recovery', () => {
     expect(second.getState().doc.source).toBe('# My unsaved idea\n')
     second.getState().undo() // recovery is a normal undoable edit
     expect(second.getState().doc.source).toContain('HypeSlides')
+  })
+
+  it('recovering an untitled draft reattaches its pending media; discarding clears it', async () => {
+    const { drafts } = opfs()
+    const pending = new MemoryDirHandle('pending')
+    const pendingStore = () => FsAccessStore.fromHandle(asDirHandle(pending), { createIfMissing: true })
+    const clearPending = vi.fn(async () => {})
+    const env = () => fakeEnv({ drafts, clearPending, createPending: pendingStore, openPending: pendingStore })
+    const first = createAppStore(env())
+    await first.getState().init()
+    await first.getState().addMediaFiles([new File([new Uint8Array([7])], 'pic.png', { type: 'image/png' })])
+    await flushAll(first)
+    expect(pending.get('images/pic.png')).toEqual(new Uint8Array([7]))
+
+    const second = createAppStore(env())
+    await second.getState().init()
+    expect(second.getState().media).toBeNull()
+    await second.getState().recoverDraft()
+    expect(second.getState().doc.source).toContain('pic.png')
+    expect(second.getState().media).not.toBeNull()
+
+    const third = createAppStore(env())
+    await third.getState().init()
+    await third.getState().discardDraft()
+    expect(clearPending).toHaveBeenCalled()
   })
 
   it('discardDraft clears the draft for good', async () => {

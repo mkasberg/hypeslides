@@ -24,6 +24,8 @@ export interface Env {
   createOpfs(markdown: string, label?: string): Promise<PresentationStore | null>
   /** Fresh OPFS area for media added to a deck with no folder yet; null without OPFS. */
   createPending(): Promise<PresentationStore | null>
+  /** The existing pending-media area (e.g. after a reload), without clearing it; null if none. */
+  openPending(): Promise<PresentationStore | null>
   /** Discard the pending-media area. */
   clearPending(): Promise<void>
   importFiles(files: File[]): Promise<PresentationStore>
@@ -51,6 +53,7 @@ export function realEnv(): Env {
     openCurrentOpfs: () => (caps().opfs ? OpfsStore.openCurrent() : Promise.resolve(null)),
     createOpfs: async (md, label) => (caps().opfs ? OpfsStore.replaceCurrent(md, { label }) : null),
     createPending: async () => (caps().opfs ? OpfsStore.replacePending() : null),
+    openPending: async () => (caps().opfs ? OpfsStore.openPending() : null),
     clearPending: () => OpfsStore.clearPending(),
     importFiles: importPickedFiles,
     async importDrop(dt) {
