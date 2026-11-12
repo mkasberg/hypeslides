@@ -5,6 +5,7 @@ import { installShortcuts } from './app/shortcuts'
 import { isDirty } from './app/store'
 import { useApp } from './app/useApp'
 import { ConfirmDialog, PasteDialog, RecoveryDialog, ShortcutsOverlay, VersionHistoryDialog } from './ui/Dialogs'
+import { PrintHost } from './ui/PrintHost'
 import { ProblemsIndicator } from './ui/Problems'
 import { PresentView } from './ui/PresentView'
 import { TopBar, storageLabel } from './ui/TopBar'
@@ -133,6 +134,7 @@ export default function App() {
       <ShortcutsOverlay />
       <VersionHistoryDialog />
       <RecoveryDialog />
+      <PrintHost />
     </div>
   )
 }

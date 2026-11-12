@@ -57,6 +57,7 @@ export function TopBar() {
     { label: 'Save', shortcut: 'Ctrl+S', onSelect: () => runCommand('file.save') },
     ...(chromium ? [{ label: 'Save as…', shortcut: 'Ctrl+Shift+S', onSelect: () => runCommand('file.saveAs') }] : []),
     { label: store || !chromium ? 'Export (.md / .zip)' : 'Export (.md)', shortcut: 'Ctrl+E', onSelect: () => runCommand('file.export') },
+    { label: 'Export as PDF…', shortcut: 'Ctrl+P', onSelect: () => runCommand('file.exportPdf') },
     { separator: true },
     { label: 'Version history…', onSelect: () => runCommand('file.history') },
   ]

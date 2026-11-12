@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { findProblems, fontFor, headerOf, parseDeck, parseMedia, slideProblemStatus } from '../core'
+import { findProblems, fontFor, headerOf, parseDeck, slideProblemStatus } from '../core'
 import type { Problem } from '../core'
+import { mediaExistsFor } from '../app/problems'
 import { useApp } from '../app/useApp'
 import { measureTextSize, subscribeFonts } from '../render/fit'
 
@@ -25,20 +26,8 @@ export function useDeckProblems(): Problem[] {
     let later: ReturnType<typeof setTimeout> | undefined
     const timer = setTimeout(async () => {
       const parsed = parseDeck(source)
-      const files = new Set<string>()
-      for (const slide of parsed.slides) {
-        const m = parseMedia(slide.source)
-        if (m?.file) files.add(m.file)
-        if (m?.poster) files.add(m.poster)
-      }
-      const present = new Set<string>()
-      await Promise.all(
-        [...files].map(async (name) => {
-          if (media && (await media.resolve(name).catch(() => null))) present.add(name)
-        }),
-      )
+      const mediaExists = await mediaExistsFor(parsed, media)
       if (cancelled) return
-      const mediaExists = (name: string) => present.has(name)
       setProblems(findProblems(source, { mediaExists }, parsed))
       later = setTimeout(async () => {
         await document.fonts?.ready

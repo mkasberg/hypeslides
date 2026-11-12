@@ -501,3 +501,33 @@ describe('version history and crash recovery', () => {
     expect(app.getState().doc.source).toBe('# First\n')
   })
 })
+
+describe('exportPdf', () => {
+  const open = async (md: string, media: Record<string, boolean> = {}) => {
+    const dir = new MemoryDirHandle('talk').put('presentation.md', md)
+    for (const f of Object.keys(media)) if (media[f]) dir.put(`images/${f}`, new Uint8Array([1]))
+    const app = createAppStore(fakeEnv({ restoreLast: async () => ({ handle: asDirHandle(dir), granted: true }) }))
+    await app.getState().init()
+    return app
+  }
+
+  it('refuses with Hype wording and selects the slide when media is missing', async () => {
+    const app = await open(deckOf('# A', '# B\n\n![](gone.png)'))
+    await app.getState().exportPdf()
+    const s = app.getState()
+    expect(s.printing).toBe(false)
+    expect(s.status).toBe('Slide 2: Missing media: gone.png')
+    expect(s.statusFailed).toBe(true)
+    expect(s.doc.selected).toBe(1)
+  })
+
+  it('does not refuse for warnings and starts printing', async () => {
+    const app = await open(deckOf('# A', '# '))
+    await app.getState().exportPdf()
+    expect(app.getState().printing).toBe(true)
+    expect(app.getState().statusFailed).toBe(false)
+    await app.getState().exportPdf() // re-entry is a no-op
+    app.getState().finishPrint()
+    expect(app.getState().printing).toBe(false)
+  })
+})
