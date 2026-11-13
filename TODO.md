@@ -67,18 +67,18 @@ suites are what catch regressions.
 
 ## 3. Close MVP gaps
 
-- [ ] **Media on a new, unsaved deck (Chromium).** Today you must save before
+- [x] **Media on a new, unsaved deck (Chromium).** Today you must save before
       adding media. Hold pending media in OPFS and write it into the folder on
       first save.
-- [ ] **Paste naming and image compression.** Hype prompts for a name, resizes
+- [x] **Paste naming and image compression.** Hype prompts for a name, resizes
       stills to fit 4K, and picks lossless PNG or WebP. Do it with
       `OffscreenCanvas` in a worker, with a progress bar and cancel.
-- [ ] **`check` problems in the editor.** Port Hype's
+- [x] **`check` problems in the editor.** Port Hype's
       `slideProblems`/`findProblems` into `src/core` (missing media, invalid
       layout options, unfinished code fences, text that shrinks below a
       readable size) and show them on the slide banner and status line. Also
       half of the future agent tools.
-- [ ] **Polish:**
+- [-] **Polish:**
   - Stronger editor selection color on Tokyo Night.
   - "Rosé Pine" display name.
   - Smaller bundle: drop the HTML/JS/CSS parsers that
@@ -96,7 +96,7 @@ suites are what catch regressions.
 
 ## 5. Sharing
 
-- [ ] **PDF export.** Print all slides via `window.print()` with `@page` CSS
+- [x] **PDF export.** Print all slides via `window.print()` with `@page` CSS
       sized 16:9; text stays vector. The browser's print dialog appears.
   - [ ] Once PDF/PPTX export exists, extend the parity suite to compare
         against Hype's own PDF/PPTX of the same decks (page count,
