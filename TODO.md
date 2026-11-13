@@ -98,9 +98,11 @@ suites are what catch regressions.
 
 - [x] **PDF export.** Print all slides via `window.print()` with `@page` CSS
       sized 16:9; text stays vector. The browser's print dialog appears.
-  - [ ] Once PDF/PPTX export exists, extend the parity suite to compare
-        against Hype's own PDF/PPTX of the same decks (page count,
-        `pdftotext` text, embedded media).
+  - [x] Extend the parity suite to compare against Hype's own PDF of the
+        same decks (`tests/parity/pdf.spec.ts`: page count and size, title,
+        per-page text, embedded images). Found and fixed a Chrome print bug
+        that dropped text below 720px of each slide.
+  - [ ] Same for PPTX, once PPTX export exists.
 - [ ] **PPTX export.** Rasterize slides at 3840×2160 (snapdom or
       html-to-image) and package with PptxGenJS; embed videos as-is.
       Converting animated GIF/WebP to MP4 (WebCodecs + an MP4 muxer) can come

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Renders every deck in tests/parity/decks with the pinned Hype build (Docker)
-# into tests/parity/reference/<deck>/ and writes reference/manifest.json.
+# into tests/parity/reference/<deck>/ (slide PNGs, slides.json, and Hype's PDF
+# export as presentation.pdf) and writes reference/manifest.json.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -38,6 +39,9 @@ for dir in "$DECKS"/*/; do
     render "/in/$name/presentation.md" -o "/out/$name" >/dev/null \
     || { echo "FAILED: render of $name" >&2; exit 1; }
   [ -f "$REF/$name/slides.json" ] || { echo "FAILED: no slides.json for $name" >&2; exit 1; }
+  docker run --rm -u "$(id -u):$(id -g)" -v "$WORK:/in" -v "$REF:/out" "$IMAGE" \
+    export "/in/$name/presentation.md" "/out/$name/presentation.pdf" >/dev/null \
+    || { echo "FAILED: PDF export of $name" >&2; exit 1; }
   count=$(grep -o '"image"' "$REF/$name/slides.json" | wc -l | tr -d ' ')
   [ "$count" -gt 0 ] || { echo "FAILED: $name rendered 0 slides" >&2; exit 1; }
   # print non-empty warnings (one slide object per line after normalising)

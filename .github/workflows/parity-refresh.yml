@@ -54,8 +54,9 @@ jobs:
         run: tools/parity-refresh.sh
 
       # The references changed, so reset baselines to today's scores (Playwright
-      # runs in its Docker image, which does its own npm ci). A slide
-      # count mismatch still fails the run; record it in the PR instead.
+      # runs in its Docker image, which does its own npm ci). A slide or PDF
+      # page count mismatch (or a PDF page size, title or image count
+      # mismatch) still fails the run; record it in the PR instead.
       - name: Reset parity baselines
         id: scores
         env:
@@ -65,7 +66,7 @@ jobs:
             echo "status=ok" >> "$GITHUB_OUTPUT"
           else
             echo "status=failed" >> "$GITHUB_OUTPUT"
-            echo "::warning::Parity run failed (slide count mismatch?); see the report artifact."
+            echo "::warning::Parity run failed (slide/page count or PDF structure mismatch?); see the report artifact."
           fi
 
       - uses: actions/upload-artifact@v7
@@ -86,10 +87,12 @@ jobs:
             tools/hype-reference/
             tests/parity/reference/
             tests/parity/scores.json
+            tests/parity/pdf-scores.json
             README.md
           body: |
-            Re-rendered `tests/parity/reference/` with Hype in Docker and reset
-            `tests/parity/scores.json` to the new scores.
+            Re-rendered `tests/parity/reference/` (slides and PDFs) with Hype in
+            Docker and reset `tests/parity/scores.json` and
+            `tests/parity/pdf-scores.json` to the new scores.
 
             - Hype commit input: `${{ inputs.hype_commit || '(unchanged)' }}`
             - Omarchy commit input: `${{ inputs.omarchy_commit || '(unchanged)' }}`
