@@ -40,9 +40,19 @@ Visual, Markdown, and Overview modes, slide reordering by drag or keyboard,
 formatting shortcuts, media layout options, themes, and fullscreen present mode
 all follow Hype. Press `?` in the app for the shortcuts.
 
-Not yet ported: PDF and PowerPoint export, presenter view, version history,
-and image compression on paste. See [TODO.md](TODO.md) for the full roadmap,
-including testing, CI, and agent support.
+## Exporting
+
+- **PDF** (Ctrl+P) prints through the browser's print dialog; text stays vector.
+- **PowerPoint** (Ctrl+Shift+E) downloads a `.pptx` built the way Hype builds
+  one: every slide is a 3840×2160 picture of the rendered slide (not editable
+  text), so the receiving computer needs none of your fonts. H.264/AAC MP4
+  videos are embedded with their autoplay, loop, and mute settings; other
+  video formats are exported as a still for now (Hype converts them with
+  ffmpeg). Animated GIF/WebP export their first frame.
+
+Not yet ported: presenter view, and converting video and animations for
+PowerPoint. See [TODO.md](TODO.md) for the full roadmap, including testing, CI,
+and agent support.
 
 ## Develop
 

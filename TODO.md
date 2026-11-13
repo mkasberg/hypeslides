@@ -102,11 +102,24 @@ suites are what catch regressions.
         same decks (`tests/parity/pdf.spec.ts`: page count and size, title,
         per-page text, embedded images). Found and fixed a Chrome print bug
         that dropped text below 720px of each slide.
-  - [ ] Same for PPTX, once PPTX export exists.
-- [ ] **PPTX export.** Rasterize slides at 3840×2160 (snapdom or
-      html-to-image) and package with PptxGenJS; embed videos as-is.
-      Converting animated GIF/WebP to MP4 (WebCodecs + an MP4 muxer) can come
-      later.
+  - [ ] Same for PPTX: unzip our `.pptx` and Hype's, compare the package
+        structure and score each slide picture against Hype's (a one-off
+        check scored the same as the on-screen render: mean +0.0007 SSIM
+        over 44 parity slides). Needs Hype's PPTX in the reference refresh.
+- [x] **PPTX export.** Slides rasterized at 3840×2160 with snapdom
+      (`src/render/rasterize.tsx`), packaged by a port of Hype's `pptx.cpp`
+      (`src/core/pptx.ts`, pure). H.264/AAC MP4s are embedded with Hype's
+      timing XML and, for spanning video, a transparent text overlay.
+  - [ ] Convert other video (WebM, HEVC, MOV) to H.264/AAC MP4 in the
+        browser: WebCodecs `VideoDecoder`/`VideoEncoder` plus an MP4 muxer.
+        Until then those slides export their poster as a still, with a
+        warning on the status line.
+  - [ ] Convert animated GIF/WebP slides to MP4, as Hype's
+        `animationexport.cpp` does (one cycle, the whole slide per frame,
+        `repeatCount` for repeats). `ImageDecoder` gives the frames. 4K
+        H.264 may need a 1080p fallback where the encoder can't do it.
+  - [ ] Try snapdom's `html-in-canvas` engine where available (Chromium):
+        the browser's own painter instead of SVG `foreignObject`.
 - [ ] **Presenter view.** A second window synced over `BroadcastChannel`:
       current and next slide, speaker notes (`<!-- comments -->`), timer.
       Window Management API on Chromium to place slides on the external

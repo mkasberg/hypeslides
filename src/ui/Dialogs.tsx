@@ -54,6 +54,7 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
       ['Ctrl+S / Ctrl+Shift+S', 'Save / save as'],
       ['Ctrl+E', 'Export (.md or .zip)'],
       ['Ctrl+P', 'Export as PDF (print dialog)'],
+      ['Ctrl+Shift+E', 'Export as PowerPoint'],
     ],
   },
   {

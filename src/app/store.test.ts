@@ -28,6 +28,8 @@ function fakeEnv(over: Partial<Env> = {}): Env {
     importDrop: async () => null,
     exportStore: async () => {},
     exportText: () => {},
+    downloadFile: () => {},
+    pptxDeps: async () => { throw new Error('no') },
     ...over,
   }
 }
@@ -529,5 +531,72 @@ describe('exportPdf', () => {
     await app.getState().exportPdf() // re-entry is a no-op
     app.getState().finishPrint()
     expect(app.getState().printing).toBe(false)
+  })
+})
+
+describe('exportPptx', () => {
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0])
+  const setup = async (md: string, over: Partial<Env> = {}) => {
+    const dir = new MemoryDirHandle('talk').put('presentation.md', md)
+    const downloads: { name: string; blob: Blob }[] = []
+    const dispose = vi.fn()
+    const app = createAppStore(
+      fakeEnv({
+        restoreLast: async () => ({ handle: asDirHandle(dir), granted: true }),
+        downloadFile: (blob, name) => void downloads.push({ name, blob }),
+        pptxDeps: async () => ({
+          renderSlide: async () => new Blob([JPEG]),
+          readMedia: async () => null,
+          videoFrame: async () => null,
+          toPng: async (b) => b,
+          dispose,
+        }),
+        ...over,
+      }),
+    )
+    await app.getState().init()
+    return { app, downloads, dispose }
+  }
+
+  it('downloads a .pptx named after the deck and cleans up', async () => {
+    const { app, downloads, dispose } = await setup('---\ntitle: Q3 Review\n---\n\n# A\n\n---\n\n# B\n')
+    await app.getState().exportPptx()
+    expect(downloads.map((d) => d.name)).toEqual(['Q3 Review.pptx'])
+    expect(downloads[0].blob.type).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+    expect(dispose).toHaveBeenCalled()
+    expect(app.getState().exporting).toBe(false)
+    expect(app.getState().status).toBe('Exported Q3 Review.pptx')
+  })
+
+  it('refuses when media is missing, without rendering', async () => {
+    const pptxDeps = vi.fn()
+    const { app, downloads } = await setup(deckOf('# A', '![](gone.png)'), { pptxDeps })
+    await app.getState().exportPptx()
+    expect(pptxDeps).not.toHaveBeenCalled()
+    expect(downloads).toEqual([])
+    expect(app.getState().status).toBe('Slide 2: Missing media: gone.png')
+    expect(app.getState().exporting).toBe(false)
+  })
+
+  it('shows progress and can be cancelled', async () => {
+    let release = () => {}
+    const { app, downloads } = await setup(deckOf('# A', '# B'), {
+      pptxDeps: async () => ({
+        renderSlide: () => new Promise<Blob>((r) => (release = () => r(new Blob([JPEG])))),
+        readMedia: async () => null,
+        videoFrame: async () => null,
+        toPng: async (b) => b,
+        dispose: () => {},
+      }),
+    })
+    const running = app.getState().exportPptx()
+    await vi.waitFor(() => expect(app.getState().status).toBe('Exporting slide 1 of 2'))
+    expect(app.getState().exporting).toBe(true)
+    app.getState().cancelExport()
+    release()
+    await running
+    expect(downloads).toEqual([])
+    expect(app.getState().status).toBe('PowerPoint export cancelled')
+    expect(app.getState().exporting).toBe(false)
   })
 })

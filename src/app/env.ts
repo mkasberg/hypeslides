@@ -6,6 +6,8 @@ import {
   openFolder, rememberDirectory, DraftStore, opfsPresentationsDir, requestAccess, restoreLast, exportPresentation, downloadBlob,
 } from '../storage'
 import type { CreateStatus, PresentationStore, RestoredDirectory } from '../storage'
+import type { DeckLook } from '../render/rasterize'
+import type { PptxExportDeps } from './pptxExport'
 
 export interface Env {
   /** Real folders on disk (File System Access) are available. */
@@ -33,6 +35,10 @@ export interface Env {
   importDrop(dt: DataTransfer): Promise<PresentationStore | null>
   exportStore(store: PresentationStore, name: string): Promise<void>
   exportText(markdown: string, name: string): void
+  /** Hand a generated file (an export) to the user: a browser download. */
+  downloadFile(blob: Blob, name: string): void
+  /** Offscreen slide rendering and media access for PowerPoint export; dispose when done. */
+  pptxDeps(look: DeckLook): Promise<PptxExportDeps & { dispose(): void }>
 }
 
 export function realEnv(): Env {
@@ -76,5 +82,32 @@ export function realEnv(): Env {
     },
     exportStore: (s, name) => exportPresentation(s, name),
     exportText: (md, name) => downloadBlob(new Blob([md], { type: 'text/markdown' }), name.replace(/\.md$/i, '') + '.md'),
+    downloadFile: downloadBlob,
+    async pptxDeps(look) {
+      // Loaded on first export: snapdom stays out of the main bundle.
+      const { createSlideRasterizer, canvasBlob, toPng, videoFrame } = await import('../render/rasterize')
+      const rasterizer = createSlideRasterizer(look)
+      return {
+        renderSlide: async (source, layer) => {
+          const canvas = await rasterizer.render(source, { width: 3840, layer })
+          // Slides are opaque: high-quality JPEG, as Hype stores them. The overlay keeps its alpha.
+          return layer ? canvasBlob(canvas, 'image/png') : canvasBlob(canvas, 'image/jpeg', 0.92)
+        },
+        readMedia: async (name) => {
+          const url = await look.resolveMedia(name)
+          return url ? (await fetch(url)).blob() : null
+        },
+        videoFrame: async (video) => {
+          const url = URL.createObjectURL(video)
+          try {
+            return await videoFrame(url)
+          } finally {
+            URL.revokeObjectURL(url)
+          }
+        },
+        toPng,
+        dispose: () => rasterizer.dispose(),
+      }
+    },
   }
 }
