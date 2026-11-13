@@ -33,6 +33,8 @@ fflate, Vitest.
 - MVP scope: editor, Visual / Markdown / Overview modes, open/save a folder,
   present mode. Not yet: PDF/PPTX export, presenter view, version history —
   but leave the seams (`PresentationStore.snapshot`, shared `<Slide>`).
-- Tests: `npm test` (Vitest). Typecheck/build: `npm run build`.
+- Tests: `npm test` (Vitest). Typecheck/build: `npm run build`. Lint:
+  `npm run lint` (oxlint; warnings fail it, as in CI). Run all three before
+  committing.
 - Commit only your own files with explicit paths (`git add <paths>`), never
   `git add -A`; other agents may be working in the same tree.

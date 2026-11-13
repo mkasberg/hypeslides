@@ -88,6 +88,8 @@ export class MemoryDirHandle {
   /** Test helper: create a file at a `/`-separated path with text or bytes. */
   put(path: string, content: string | Uint8Array): this {
     const parts = path.split('/')
+    // Walks down from this directory; the cursor starts at `this`.
+    // oxlint-disable-next-line no-this-alias
     let dir: MemoryDirHandle = this
     for (const p of parts.slice(0, -1)) {
       let next = dir.children.get(p)
@@ -102,6 +104,7 @@ export class MemoryDirHandle {
 
   /** Test helper: read file bytes at a path, or undefined. */
   get(path: string): Uint8Array | undefined {
+    // oxlint-disable-next-line no-this-alias
     let cur: MemoryFileHandle | MemoryDirHandle | undefined = this
     for (const p of path.split('/')) {
       if (!cur || cur.kind !== 'directory') return undefined

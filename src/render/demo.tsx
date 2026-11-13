@@ -81,6 +81,8 @@ const slides = [...parseDeck(welcome).slides.map((s) => s.source), ...extra.spli
 
 const resolve = async (name: string) => MEDIA[name] ?? null
 
+// Dev-only entry page (render-demo.html), not hot-reloaded as a module.
+// oxlint-disable-next-line react/only-export-components
 function Demo() {
   const [theme, setTheme] = useState('tokyo-night')
   const [mode, setMode] = useState<'thumbnail' | 'preview' | 'present'>('preview')

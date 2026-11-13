@@ -1,35 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { THEMES } from '../core'
-import { SYSTEM, SYSTEM_DARK, SYSTEM_LIGHT, prettyThemeName } from '../app/appTheme'
 import { CheckIcon } from './icons'
-
-export interface ThemeOption {
-  value: string
-  label: string
-  /** Color chips shown after the label. */
-  chips: string[]
-}
-
-/** Chips for a bundled theme: background, foreground, accent, then a few palette colors. */
-export function themeOption(name: string): ThemeOption {
-  const t = THEMES.find((x) => x.name === name)
-  const c = t?.colors
-  return {
-    value: name,
-    label: prettyThemeName(name),
-    chips: c ? [c.background, c.foreground, c.accent, c.green, c.red, c.yellow, c.magenta] : [],
-  }
-}
-
-/** 'System (light/dark)': chips of both themes it can resolve to. */
-export function systemOption(): ThemeOption {
-  const d = themeOption(SYSTEM_DARK).chips
-  const l = themeOption(SYSTEM_LIGHT).chips
-  return { value: SYSTEM, label: 'System (light/dark)', chips: [d[0], d[2], l[0], l[2]] }
-}
-
-export const allThemeOptions = (): ThemeOption[] => THEMES.map((t) => themeOption(t.name))
+import type { ThemeOption } from './themeOptions'
 
 /**
  * A list of themes for a popover. Hovering or arrowing onto a row previews it
@@ -121,37 +93,37 @@ export function Popover({ button, className, title, alignRight, onClose, childre
 }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ left: 0, top: 0 })
-  const btn = useRef<HTMLButtonElement>(null)
+  // The button in state, not a ref: the close callback handed to `children` focuses it.
+  const [btn, setBtn] = useState<HTMLButtonElement | null>(null)
   const panel = useRef<HTMLDivElement>(null)
   const close = () => {
     setOpen(false)
     onClose?.()
   }
-  const latestClose = useRef(close)
-  latestClose.current = close
+  const dismiss = useEffectEvent(close)
 
   useLayoutEffect(() => {
-    if (!open || !panel.current || !btn.current) return
-    const r = btn.current.getBoundingClientRect()
+    if (!open || !panel.current || !btn) return
+    const r = btn.getBoundingClientRect()
     const w = panel.current.getBoundingClientRect().width
     let left = alignRight ? r.right - w : r.left
     left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
     setPos({ left, top: r.bottom + 4 })
-  }, [open, alignRight])
+  }, [open, alignRight, btn])
 
   useEffect(() => {
     if (!open) return
     const down = (e: PointerEvent) => {
       const t = e.target as Node
-      if (panel.current?.contains(t) || btn.current?.contains(t)) return
-      latestClose.current()
+      if (panel.current?.contains(t) || btn?.contains(t)) return
+      dismiss()
     }
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
-        latestClose.current()
-        btn.current?.focus()
+        dismiss()
+        btn?.focus()
       }
     }
     document.addEventListener('pointerdown', down, true)
@@ -160,12 +132,12 @@ export function Popover({ button, className, title, alignRight, onClose, childre
       document.removeEventListener('pointerdown', down, true)
       window.removeEventListener('keydown', key, true)
     }
-  }, [open])
+  }, [open, btn])
 
   return (
     <>
       <button
-        ref={btn}
+        ref={setBtn}
         type="button"
         className={className}
         title={title}
@@ -180,7 +152,7 @@ export function Popover({ button, className, title, alignRight, onClose, childre
         <div ref={panel} className="menu popover" role="menu" style={{ left: pos.left, top: pos.top }}>
           {children(() => {
             close()
-            btn.current?.focus()
+            btn?.focus()
           })}
         </div>
       )}

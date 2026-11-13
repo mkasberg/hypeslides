@@ -142,35 +142,30 @@ export function CodeEditor(props: CodeEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const { value, docKey, normalize } = props
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
     const current = view.state.doc.toString()
-    const reset = key.current !== props.docKey
-    key.current = props.docKey
-    if (!reset && (current === props.value || (own.current !== null && (props.normalize ?? ((x) => x))(own.current) === props.value))) return
+    const reset = key.current !== docKey
+    key.current = docKey
+    if (!reset && (current === value || (own.current !== null && (normalize ?? ((x) => x))(own.current) === value))) return
     quiet.current = true
     try {
       const sel = view.state.selection.main
       view.dispatch({
-        changes: { from: 0, to: current.length, insert: props.value },
+        changes: { from: 0, to: current.length, insert: value },
         selection: reset
           ? { anchor: 0 }
-          : { anchor: Math.min(sel.anchor, props.value.length), head: Math.min(sel.head, props.value.length) },
+          : { anchor: Math.min(sel.anchor, value.length), head: Math.min(sel.head, value.length) },
         scrollIntoView: !reset,
       })
       if (reset) view.scrollDOM.scrollTop = 0
     } finally {
       quiet.current = false
     }
-    own.current = props.value
-  }, [props.value, props.docKey, props.normalize])
+    own.current = value
+  }, [value, docKey, normalize])
 
   return <div className="code-editor" ref={host} />
-}
-
-/** Move the cursor of a mounted editor without notifying onCursor. */
-export function setCursorQuietly(view: EditorView, offset: number, scrollToTop = false) {
-  const pos = Math.max(0, Math.min(view.state.doc.length, offset))
-  view.dispatch({ selection: { anchor: pos }, effects: scrollToTop ? EditorView.scrollIntoView(pos, { y: 'start', yMargin: 12 }) : EditorView.scrollIntoView(pos, { y: 'nearest', yMargin: 24 }) })
 }

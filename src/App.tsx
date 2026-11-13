@@ -8,7 +8,8 @@ import { ConfirmDialog, PasteDialog, RecoveryDialog, ShortcutsOverlay, VersionHi
 import { PrintHost } from './ui/PrintHost'
 import { ProblemsIndicator } from './ui/Problems'
 import { PresentView } from './ui/PresentView'
-import { TopBar, storageLabel } from './ui/TopBar'
+import { TopBar } from './ui/TopBar'
+import { storageLabel } from './ui/storageLabel'
 import { MarkdownView, OverviewView, VisualView } from './ui/Views'
 
 function useWindowBehavior() {
