@@ -62,9 +62,11 @@ const CSS = `
 .hs-play{position:absolute;width:150px;height:150px;border-radius:50%;border:8px solid rgba(255,255,255,.9);background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
 .hs-play::after{content:'';margin-left:14px;border-left:50px solid rgba(255,255,255,.95);border-top:30px solid transparent;border-bottom:30px solid transparent}
 /* PDF export: <PrintDeck> is portaled into <body>. On screen it is laid out (fonts and text fit
-   measure the DOM) but offscreen and invisible; when printing only it remains. */
+   measure the DOM) but offscreen and invisible; when printing only it remains. A page holds a
+   1080px-tall slide scaled to 720px by a transform; without contain:strict Chrome paginates by
+   the untransformed layout and drops everything below 720px into a clipped continuation. */
 .hs-print-root{position:fixed;left:-100000px;top:0;width:1280px;visibility:hidden;pointer-events:none}
-.hs-print-page{width:1280px;height:720px;overflow:hidden;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hs-print-page{width:1280px;height:720px;overflow:hidden;position:relative;contain:strict;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .hs-print-page>.hs-outer{width:1280px}
 @page{size:1280px 720px;margin:0}
 @media print{
