@@ -2,7 +2,8 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { PrintDeck, whenPrintReady } from './PrintDeck'
+import { PrintDeck } from './PrintDeck'
+import { whenPrintReady } from './printReady'
 import type { Palette } from '../core/types'
 
 const palette = { background: '#000', foreground: '#fff', accent: '#0ff' } as unknown as Palette
