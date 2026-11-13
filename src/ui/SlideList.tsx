@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { DndContext, DragOverlay, PointerSensor, pointerWithin, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
@@ -81,7 +81,9 @@ export function SlideList({ variant }: { variant: 'sidebar' | 'overview' }) {
   const justDragged = useRef(0)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
   const selRef = useRef({ first, last })
-  selRef.current = { first, last }
+  useLayoutEffect(() => {
+    selRef.current = { first, last }
+  }, [first, last])
 
   // Keep the selection in view.
   useEffect(() => {
@@ -135,7 +137,7 @@ export function SlideList({ variant }: { variant: 'sidebar' | 'overview' }) {
     const r = selectionRange(s.doc)
     if (index < r.first || index > r.last) s.select(index)
     setMenu({ x: e.clientX, y: e.clientY, items: slideMenu() })
-  }, [])
+  }, [setMenu])
 
   const slotFor = (e: DragOverEvent): number | null => {
     const over = e.over

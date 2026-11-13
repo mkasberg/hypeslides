@@ -10,7 +10,7 @@ import { measureTextSize, subscribeFonts } from '../render/fit'
  * needs a browser). Debounced; the cheap checks land first, the text-size
  * warnings follow once every slide has been laid out (cached per slide text).
  */
-export function useDeckProblems(): Problem[] {
+function useDeckProblems(): Problem[] {
   const source = useApp((s) => s.doc.source)
   const font = useApp((s) => fontFor(headerOf(s.doc)))
   const media = useApp((s) => s.media)

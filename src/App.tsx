@@ -7,7 +7,8 @@ import { useApp } from './app/useApp'
 import { ConfirmDialog, PasteDialog, RecoveryDialog, ShortcutsOverlay, VersionHistoryDialog } from './ui/Dialogs'
 import { ProblemsIndicator } from './ui/Problems'
 import { PresentView } from './ui/PresentView'
-import { TopBar, storageLabel } from './ui/TopBar'
+import { TopBar } from './ui/TopBar'
+import { storageLabel } from './ui/storageLabel'
 import { MarkdownView, OverviewView, VisualView } from './ui/Views'
 
 function useWindowBehavior() {

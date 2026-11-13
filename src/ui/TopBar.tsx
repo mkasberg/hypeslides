@@ -7,20 +7,15 @@ import { loadLocalFonts, useLocalFonts } from '../app/localFonts'
 import { Dropdown } from './Menu'
 import type { MenuItem } from './Menu'
 import { getAppThemePref, previewAppTheme, prettyThemeName, setAppThemePref, subscribeAppTheme } from '../app/appTheme'
-import { Popover, ThemeList, allThemeOptions, systemOption } from './ThemeList'
+import { Popover, ThemeList } from './ThemeList'
+import { allThemeOptions, systemOption } from './themeOptions'
+import { storageLabel } from './storageLabel'
 import { ChevronIcon, FileIcon, FontIcon, GitHubIcon, GridIcon, MarkdownIcon, PaletteIcon, PlayIcon, VisualIcon } from './icons'
 
 const prettyTheme = prettyThemeName
 const PRESENTATION_OPTIONS = allThemeOptions()
 const APP_OPTIONS = [systemOption(), ...PRESENTATION_OPTIONS]
 const isChromium = () => typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'
-
-export function storageLabel(s: { store: { kind: string; name: string } | null; doc: { source: string }; savedSource: string; saving: boolean }): string {
-  const dirty = s.doc.source !== s.savedSource
-  if (!s.store) return isChromium() ? (dirty ? 'Not saved yet. Ctrl+S chooses a folder' : 'New presentation. Ctrl+S chooses a folder') : 'Not saved. Export to keep a copy'
-  if (s.store.kind === 'fs-access') return dirty || s.saving ? 'Saving…' : `Saved to disk · ${s.store.name}`
-  return dirty || s.saving ? 'Saving…' : 'Stored in this browser. Export to save a copy'
-}
 
 export function TopBar() {
   const doc = useApp((s) => s.doc)

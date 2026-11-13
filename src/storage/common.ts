@@ -53,6 +53,8 @@ export async function uniqueName(
 /** Strip any path components and characters that are illegal in filenames. */
 export function sanitizeFilename(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? name
+  // Control characters are illegal in filenames; matching them is the point.
+  // oxlint-disable-next-line no-control-regex
   const clean = base.replace(/[\u0000-\u001f<>:"|?*]/g, '_').trim()
   return clean || 'file'
 }
