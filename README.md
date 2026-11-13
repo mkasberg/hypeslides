@@ -72,7 +72,9 @@ Pass extra Playwright flags after `--`, e.g. `npm run test:e2e -- -g overview`.
 `/harness.html` on the dev server is the render harness: `?deck=welcome&slide=3`
 shows one slide of a deck from `tests/parity/decks/` at exactly 1920×1080, and
 `?demo` shows a sample deck in every theme. Programmatic use:
-`window.hypeHarness.render({ markdown, media, slide })`.
+`window.hypeHarness.render({ markdown, media, slide })`, and
+`window.hypeHarness.renderPdf({ markdown, media })` to mount the PDF export's
+print pages (then print, e.g. with Playwright's `page.pdf()`).
 
 ### Parity tests
 
@@ -83,6 +85,14 @@ the suite fails when a score drops more than 0.005 below its baseline, or when
 we split a deck into a different number of slides than Hype. Runs in Docker like
 the e2e suite.
 
+The same run checks PDF export (`tests/parity/pdf.spec.ts`): each deck is
+printed through the app's `<PrintDeck>` by Chromium and compared with Hype's
+`hype export` PDF in `tests/parity/reference/<deck>/presentation.pdf`. Page
+count, page size, document title and each page's raster image count (embedded
+media) must match exactly. Each page's text (word overlap, order ignored, read
+with pdfjs-dist) is scored and baselined in `tests/parity/pdf-scores.json`
+like the slide scores.
+
 ```sh
 npm run parity           # compare; HTML report in parity-report/index.html (gitignored)
 npm run parity:update    # raise baselines (PARITY_UPDATE=reset to rewrite them all)
@@ -92,7 +102,7 @@ npm run parity:refresh   # rebuild Hype in Docker and re-render tests/parity/ref
 Hype and the Omarchy themes are pinned to specific commits (recorded in
 `tests/parity/reference/manifest.json`) and only change deliberately via
 `parity:refresh`. The report shows Hype | ours | diff for each slide, worst
-first.
+first, then the PDF comparison with both PDFs linked.
 
 Code layout is described in [CLAUDE.md](CLAUDE.md).
 

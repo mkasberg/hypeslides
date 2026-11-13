@@ -1,29 +1,19 @@
 // Hype parity suite: render every fixture deck slide through the harness page
 // and score it against Hype's reference PNG (SSIM). See README "Parity tests".
-import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { PNG } from 'pngjs'
 import pixelmatch from 'pixelmatch'
 import { ssim } from 'ssim.js'
 import { EPSILON, REPORT_DIR, loadBaselines, type SlideResult } from './shared.ts'
+import { REFERENCE, openDeck, referenceDecks } from './deck.ts'
 
-const ROOT = join(import.meta.dirname)
-const DECKS = join(ROOT, 'decks')
-const REFERENCE = join(ROOT, 'reference')
 const W = 1920
 const H = 1080
 
-const decks = readdirSync(REFERENCE)
-  .filter((d) => statSync(join(REFERENCE, d)).isDirectory())
-  .sort()
-
-function walk(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
-  )
-}
+const decks = referenceDecks()
 
 function grayscale(png: PNG): { data: Uint8ClampedArray; width: number; height: number } {
   return { data: new Uint8ClampedArray(png.data), width: png.width, height: png.height }
@@ -38,33 +28,13 @@ async function renderSlide(page: Page, markdown: string, media: Record<string, s
   return page.evaluate((req) => window.hypeHarness.render(req), { markdown, media, slide })
 }
 
-declare global {
-  interface Window {
-    hypeHarness: { render(req: { markdown: string; media: Record<string, string>; slide: number }): Promise<{ slideCount: number }> }
-  }
-}
-
 test.describe.configure({ mode: 'parallel' })
 
 for (const deck of decks) {
   test(deck, async ({ page, baseURL }) => {
-    const deckDir = join(DECKS, deck)
-    const markdown = readFileSync(join(deckDir, 'presentation.md'), 'utf8')
     const refSlides: { image: string }[] = JSON.parse(readFileSync(join(REFERENCE, deck, 'slides.json'), 'utf8')).slides
-
-    // Serve the deck's media files from disk; the harness gets plain URLs.
-    const media: Record<string, string> = {}
-    for (const file of walk(deckDir)) {
-      const rel = relative(deckDir, file).split(sep).join('/')
-      if (rel === 'presentation.md') continue
-      media[rel] = `${baseURL}/__deck/${encodeURIComponent(deck)}/${rel.split('/').map(encodeURIComponent).join('/')}`
-    }
-    await page.route(`**/__deck/${encodeURIComponent(deck)}/**`, async (route) => {
-      const path = decodeURIComponent(new URL(route.request().url()).pathname.replace(`/__deck/${encodeURIComponent(deck)}/`, ''))
-      await route.fulfill({ path: join(deckDir, path) })
-    })
-    await page.goto('/harness.html')
-    await page.waitForFunction(() => !!window.hypeHarness)
+    // The deck's media files are served from disk; the harness gets plain URLs.
+    const { markdown, media } = await openDeck(page, baseURL, deck)
 
     const baselines = loadBaselines()
     const outDir = join(REPORT_DIR, 'img', deck)

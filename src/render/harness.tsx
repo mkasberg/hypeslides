@@ -8,11 +8,16 @@
 //   window.hypeHarness.render({ markdown, media, slide })
 //                                       resolves once fonts, images and video
 //                                       first frames are ready to screenshot.
+//   window.hypeHarness.renderPdf({ markdown, media })
+//                                       mounts the PDF export's <PrintDeck> (every
+//                                       slide, one print page each) and resolves when
+//                                       it is ready to print, e.g. with page.pdf().
 import '../fonts.css'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
-import { fontFor, mediaDir, paletteFor, parseDeck, slideText } from '../core'
-import { SlideView, loadLanguage } from './index'
+import { fontFor, mediaDir, paletteFor, parseDeck, slideText, title } from '../core'
+import { PrintDeck, SlideView, loadLanguage } from './index'
+import type { MediaResolver } from './types'
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from './types'
 
 export interface HarnessRequest {
@@ -114,23 +119,10 @@ async function render(req: HarnessRequest): Promise<HarnessResult> {
   const source = slideText(parsed.slides[req.slide - 1].source)
   const palette = paletteFor(parsed.header)
   const font = fontFor(parsed.header)
-  const media = req.media ?? {}
-  const resolveMedia = async (name: string) => {
-    const path = name in media || `${mediaDir(name)}/${name}` in media ? (name in media ? name : `${mediaDir(name)}/${name}`) : null
-    if (path !== null) return media[path]
-    if (req.mediaBase === undefined) return null
-    // Dev viewing: probe the folder convention over HTTP.
-    for (const candidate of [name, `${mediaDir(name)}/${name}`]) {
-      const url = req.mediaBase + candidate.split('/').map(encodeURIComponent).join('/')
-      const r = await fetch(url, { method: 'HEAD' }).catch(() => null)
-      if (r?.ok && !r.headers.get('content-type')?.includes('text/html')) return url
-    }
-    return null
-  }
+  const resolveMedia = mediaResolver(req)
   // Highlighting is lazy; load the fence languages up front so the first
   // paint is already highlighted.
-  const langs = [...source.matchAll(/^\s*(?:```|~~~)\s*([\w+#-]+)/gm)].map((m) => m[1])
-  await Promise.all(langs.map((l) => loadLanguage(l)))
+  await loadFenceLanguages(source)
 
   root ??= createRoot(stage)
   flushSync(() =>
@@ -142,12 +134,62 @@ async function render(req: HarnessRequest): Promise<HarnessResult> {
   return { slideCount, slide: req.slide }
 }
 
-declare global {
-  interface Window {
-    hypeHarness: { render: typeof render }
+function mediaResolver(req: Pick<HarnessRequest, 'media' | 'mediaBase'>): MediaResolver {
+  const media = req.media ?? {}
+  return async (name: string) => {
+    const path = name in media || `${mediaDir(name)}/${name}` in media ? (name in media ? name : `${mediaDir(name)}/${name}`) : null
+    if (path !== null) return media[path]
+    if (req.mediaBase === undefined) return null
+    // Dev viewing: probe the folder convention over HTTP.
+    for (const candidate of [name, `${mediaDir(name)}/${name}`]) {
+      const url = req.mediaBase + candidate.split('/').map(encodeURIComponent).join('/')
+      const r = await fetch(url, { method: 'HEAD' }).catch(() => null)
+      if (r?.ok && !r.headers.get('content-type')?.includes('text/html')) return url
+    }
+    return null
   }
 }
-window.hypeHarness = { render }
+
+async function loadFenceLanguages(markdown: string) {
+  const langs = [...markdown.matchAll(/^\s*(?:```|~~~)\s*([\w+#-]+)/gm)].map((m) => m[1])
+  await Promise.all(langs.map((l) => loadLanguage(l)))
+}
+
+type PdfRequest = Omit<HarnessRequest, 'slide'>
+
+let printRoot: ReturnType<typeof createRoot> | null = null
+
+/**
+ * Mounts the same <PrintDeck> the app's Export as PDF uses and resolves once
+ * its readiness check passes. The document title is set as the app sets it
+ * for printing (Hype's fallback, the file's base name, is `presentation`).
+ */
+async function renderPdf(req: PdfRequest): Promise<{ slideCount: number }> {
+  const parsed = parseDeck(req.markdown)
+  const slides = parsed.slides.map((s) => s.source)
+  await loadFenceLanguages(req.markdown)
+  document.title = title(parsed.header, 'presentation')
+  printRoot ??= createRoot(document.createElement('div'))
+  await new Promise<void>((onReady) =>
+    printRoot!.render(
+      <PrintDeck
+        slides={slides}
+        palette={paletteFor(parsed.header)}
+        font={fontFor(parsed.header)}
+        resolveMedia={mediaResolver(req)}
+        onReady={onReady}
+      />,
+    ),
+  )
+  return { slideCount: slides.length }
+}
+
+declare global {
+  interface Window {
+    hypeHarness: { render: typeof render; renderPdf: typeof renderPdf }
+  }
+}
+window.hypeHarness = { render, renderPdf }
 
 async function main() {
   const q = new URLSearchParams(location.search)
