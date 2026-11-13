@@ -6,3 +6,6 @@ export * from './types'
 export { PrintDeck } from './PrintDeck'
 export { whenPrintReady } from './printReady'
 export type { PrintDeckProps } from './PrintDeck'
+// The rasterizer (and snapdom) is imported directly from './rasterize', lazily, to keep it out of the main bundle.
+export type { SlideRasterizer, RasterizeOptions, DeckLook } from './rasterize'
+export { mediaRect, FULL } from './layout'

@@ -91,6 +91,7 @@ button { font: inherit; color: inherit; }
 .deck-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .deck-status { font-size: 12px; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .deck-status.failed { color: var(--ui-error); }
+.deck-status .link-btn { margin-left: 8px; padding: 0; border: 0; background: none; font: inherit; color: var(--ui-accent, inherit); text-decoration: underline; cursor: pointer; }
 .logo { background: none; border: 0; font-size: 21px; font-weight: 700; color: var(--ui-accent); cursor: pointer; padding: 4px 6px; }
 .icon-btn, .pill, .segmented button, .tool, .btn { cursor: pointer; border: 1px solid var(--ui-border); background: var(--ui-button); border-radius: var(--ui-radius); }
 .icon-btn { display: inline-grid; place-items: center; width: 36px; height: 34px; }

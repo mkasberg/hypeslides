@@ -26,6 +26,8 @@ export function TopBar() {
   const saving = useApp((s) => s.saving)
   const status = useApp((s) => s.status)
   const statusFailed = useApp((s) => s.statusFailed)
+  const exporting = useApp((s) => s.exporting)
+  const cancelExport = useApp((s) => s.cancelExport)
   const setTheme = useApp((s) => s.setTheme)
   const setThemePreview = useApp((s) => s.setThemePreview)
   const appThemePref = useSyncExternalStore(subscribeAppTheme, getAppThemePref)
@@ -53,6 +55,7 @@ export function TopBar() {
     ...(chromium ? [{ label: 'Save as…', shortcut: 'Ctrl+Shift+S', onSelect: () => runCommand('file.saveAs') }] : []),
     { label: store || !chromium ? 'Export (.md / .zip)' : 'Export (.md)', shortcut: 'Ctrl+E', onSelect: () => runCommand('file.export') },
     { label: 'Export as PDF…', shortcut: 'Ctrl+P', onSelect: () => runCommand('file.exportPdf') },
+    { label: 'Export as PowerPoint', shortcut: 'Ctrl+Shift+E', disabled: exporting, onSelect: () => runCommand('file.exportPptx') },
     { separator: true },
     { label: 'Version history…', onSelect: () => runCommand('file.history') },
   ]
@@ -96,7 +99,12 @@ export function TopBar() {
       </div>
       <div className="top-center">
         <div className="deck-title" title={name}>{name}{dirty ? ' •' : ''}</div>
-        <div className={'deck-status' + (statusFailed ? ' failed' : '')} aria-live="polite">{status || position}</div>
+        <div className={'deck-status' + (statusFailed ? ' failed' : '')} aria-live="polite">
+          {status || position}
+          {exporting && (
+            <button type="button" className="link-btn" onClick={cancelExport}>Cancel export</button>
+          )}
+        </div>
       </div>
       <div className="top-right">
         <a className="icon-btn" href="https://github.com/mkasberg/hypeslides" target="_blank" rel="noopener noreferrer" title="HypeSlides on GitHub" aria-label="HypeSlides on GitHub">

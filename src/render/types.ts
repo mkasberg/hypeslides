@@ -24,6 +24,12 @@ export interface SlideViewProps {
    *              frame), no play badge, no problem banner.
    */
   mode: 'thumbnail' | 'preview' | 'present' | 'export'
+  /**
+   * Export only. 'overlay' paints just what sits over the media (the darkening
+   * overlay and the text) on a transparent background, like Hype's
+   * `paintSlide(..., overlayOnly)`: PowerPoint export lays it over a spanning video.
+   */
+  layer?: 'overlay'
   /** Present mode: toggled by Space to play/pause video. Increment to toggle. */
   playToggle?: number
 }

@@ -69,7 +69,7 @@ const rectStyle = (r: Rect): CSSProperties => ({ left: r.x, top: r.y, width: r.w
 
 // ---- component ----------------------------------------------------------------
 
-export function SlideView({ source, palette, font, resolveMedia, mode, playToggle }: SlideViewProps) {
+export function SlideView({ source, palette, font, resolveMedia, mode, playToggle, layer }: SlideViewProps) {
   ensureStyles()
   watchFonts()
   const outerRef = useRef<HTMLDivElement>(null)
@@ -107,6 +107,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   // Export has no player: a video is painted as its poster, else its extracted first frame
   // (what Hype prints). Wait for a named poster to resolve before deciding it's missing.
   const exporting = mode === 'export'
+  const overlayOnly = exporting && layer === 'overlay'
   const wantsStill = exporting && isVideo && (!media?.poster || posterUrl === null)
   const needsInfo = !!fileUrl && (wantsEdge || (isVideo && background === 'blur') || wantsStill)
   const info = useMediaInfo(fileUrl, isVideo, needsInfo)
@@ -193,7 +194,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
     '--half': halfLeadingEm(font, 1.15),
     '--lh-code': lineHeightEm('JetBrains Mono', 1.2),
     '--half-code': halfLeadingEm('JetBrains Mono', 1.2),
-    background: fill,
+    background: overlayOnly ? 'transparent' : fill,
     visibility: scale ? 'visible' : 'hidden',
     transform: `scale(${scale || 1})`,
   } as CSSProperties
@@ -237,9 +238,9 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
   }
 
   return (
-    <div ref={outerRef} className="hs-outer" style={{ background: fill }} data-pending={pending ? '' : undefined}>
+    <div ref={outerRef} className="hs-outer" style={{ background: overlayOnly ? 'transparent' : fill }} data-pending={pending ? '' : undefined}>
       <div className="hs-slide" style={cssVars}>
-        {blurBackdrop && (
+        {blurBackdrop && !overlayOnly && (
           <img
             className="hs-abs"
             src={blurBackdrop}
@@ -248,10 +249,10 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             style={{ left: 0, top: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(28px)', transform: 'scale(1.1)' }}
           />
         )}
-        {svgOnly && svgHtml && (
+        {svgOnly && svgHtml && !overlayOnly && (
           <div className="hs-svg" style={rectStyle(svgRect)} dangerouslySetInnerHTML={{ __html: svgHtml }} />
         )}
-        {media && hasFile && fileUrl && !isVideo && (
+        {media && hasFile && fileUrl && !isVideo && !overlayOnly && (
           <img
             className="hs-media"
             src={fileUrl}
@@ -265,7 +266,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             }}
           />
         )}
-        {media && hasFile && fileUrl && isVideo && exporting && (posterUrl || info?.still) && (
+        {media && hasFile && fileUrl && isVideo && exporting && !overlayOnly && (posterUrl || info?.still) && (
           <img
             className="hs-media"
             src={posterUrl || info?.still || undefined}
@@ -312,7 +313,7 @@ export function SlideView({ source, palette, font, resolveMedia, mode, playToggl
             style={{ left: mrect.x + mrect.w / 2 - 75, top: mrect.y + mrect.h / 2 - 75 }}
           />
         )}
-        {showMissing && media && (
+        {showMissing && media && !overlayOnly && (
           <div className="hs-missing" style={rectStyle(mrect)}>
             {'Missing media\n' + media.file}
           </div>
